@@ -90,23 +90,36 @@ def recibir_datos():
     if not data or "vehiculo" not in data:
         return jsonify({"error": "sin vehiculo"}), 400
 
-    # LIMPIEZA AUTOMÁTICA: Mantener solo últimas 24 horas de historial
-    tiempo_limite = int(time.time()) - (24 * 60 * 60)  # 24 horas en segundos
-    Historial.query.filter(Historial.timestamp < tiempo_limite).delete()
-    db.session.commit()
+    try:
+        # LIMPIEZA AUTOMÁTICA OPTIMIZADA: Mantener solo últimas 24 horas
+        # Se ejecuta solo cuando hay más de 100 registros para mejor rendimiento
+        if Historial.query.count() > 100:
+            tiempo_limite = int(time.time()) - (24 * 60 * 60)  # 24 horas en segundos
+            registros_eliminados = Historial.query.filter(Historial.timestamp < tiempo_limite).delete()
+            if registros_eliminados > 0:
+                db.session.commit()
+                print(f"Limpieza automática: {registros_eliminados} registros antiguos eliminados")
+            else:
+                db.session.rollback()  # No hay cambios que confirmar
 
-    registro = Historial(
-        vehiculo=data["vehiculo"],
-        estado=data["estado"],
-        alerta=data["alerta"],
-        puerta=data["puerta"],
-        vibracion=data["vibracion"],
-        timestamp=int(time.time())
-    )
-    db.session.add(registro)
-    db.session.commit()
-    print("Guardado en BD:", data)
-    return jsonify({"ok": True})
+        # Guardar nuevo registro
+        registro = Historial(
+            vehiculo=data["vehiculo"],
+            estado=data["estado"],
+            alerta=data["alerta"],
+            puerta=data["puerta"],
+            vibracion=data["vibracion"],
+            timestamp=int(time.time())
+        )
+        db.session.add(registro)
+        db.session.commit()
+        print("Guardado en BD:", data)
+        return jsonify({"ok": True})
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error al guardar datos: {e}")
+        return jsonify({"error": "Error interno del servidor"}), 500
 
 # ================= OBTENER ESTADO =================
 @app.route('/estado', methods=['GET'])

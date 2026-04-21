@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TrackSecurity — Acceso</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
+</head>
+<body>
+
+<div class="auth-wrapper">
+  <div class="auth-card">
+
+    <!-- Marca -->
+    <div class="auth-brand">
+      <div class="auth-logo">
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+          <rect x="1" y="6" width="20" height="10" rx="2" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="5" cy="18" r="2" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="17" cy="18" r="2" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M1 9h20M7 6V4h8v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="auth-title">TrackSecurity</div>
+      <div class="auth-subtitle">Monitoreo de flota vehicular</div>
+    </div>
+
+    <!-- Mensaje de error -->
+    <div class="auth-error" id="authError">Correo o contraseña incorrectos</div>
+
+    <!-- Formulario -->
+    <div class="form-group">
+      <label class="form-label" for="correo">Correo electrónico</label>
+      <input class="form-input" type="email" id="correo"
+             placeholder="usuario@empresa.com" autocomplete="email"/>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="password">Contraseña</label>
+      <input class="form-input" type="password" id="password"
+             placeholder="••••••••" autocomplete="current-password"
+             onkeydown="if(event.key==='Enter') login()"/>
+    </div>
+
+    <button class="btn-primary" onclick="login()">Iniciar sesión</button>
+
+    <div class="auth-divider"><span>¿No tienes cuenta?</span></div>
+
+    <button class="btn-secondary" onclick="irRegistro()">Crear cuenta nueva</button>
+
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/login.js') }}"></script>
+<script>
+  /* Sobreescribir login para mostrar error con clase CSS */
+  function login() {
+    const errorEl = document.getElementById("authError");
+    errorEl.classList.remove("visible");
+
+    fetch("/api/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        correo:   document.getElementById("correo").value,
+        password: document.getElementById("password").value
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.ok) {
+        window.location.href = "/panel";
+      } else {
+        errorEl.classList.add("visible");
+      }
+    })
+    .catch(() => {
+      errorEl.textContent = "Error de conexión con el servidor";
+      errorEl.classList.add("visible");
+    });
+  }
+</script>
+</body>
+</html>

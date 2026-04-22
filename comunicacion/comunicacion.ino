@@ -5,7 +5,7 @@
 const char* ssid     = "erick_2.4G";
 const char* password = "secom100";
 // Asegúrate de que esta IP sea la correcta de tu PC con Flask
-const char* server   = "http://192.168.0.103:5000/datos";
+const char* server   = "http://192.168.0.102:5000/datos";
 
 /* ================= UART FPGA ================= */
 // Usamos el Serial 2 del ESP32 (Pines 16 RX y 17 TX)
@@ -26,7 +26,7 @@ int    vibracionAnterior = -1;
 
 unsigned long ultimoEnvio = 0;
 // Intervalo configurable desde config.py (convertido a ms)
-const unsigned long INTERVALO_MAXIMO = {{ config.ESP32_SEND_INTERVAL }}; 
+const unsigned long INTERVALO_MAXIMO = 1500; 
 
 /* ================= SETUP ================= */
 void setup() {

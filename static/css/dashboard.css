@@ -434,3 +434,245 @@ header {
   .card-metrics { grid-template-columns: repeat(2, 1fr); }
   .header-title { font-size: 16px; }
 }
+
+
+
+/* ─── MODAL OSCURO (reemplaza los estilos inline del index.html) ── */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal.active { display: flex; }
+
+.modal-content {
+  background: var(--bg-card);
+  border: 1px solid var(--border-hover);
+  padding: 28px;
+  border-radius: var(--radius);
+  width: 90%;
+  max-width: 420px;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+  position: relative;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.modal-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.2px;
+}
+
+.modal-close {
+  width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 20px;
+  background: transparent;
+  border: none;
+  transition: background 0.2s, color 0.2s;
+  line-height: 1;
+}
+
+.modal-close:hover {
+  background: var(--bg-input);
+  color: var(--text);
+}
+
+/* ─── FORMULARIO DEL MODAL ───────────────────── */
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.form-input {
+  width: 100%;
+  padding: 11px 14px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.form-input:focus {
+  border-color: var(--accent);
+}
+
+.form-input::placeholder { color: var(--text-dim); }
+
+.form-select {
+  width: 100%;
+  padding: 11px 14px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12' fill='none'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%236B7280' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 14px center;
+}
+
+.form-select:focus { border-color: var(--accent); }
+
+.form-select option {
+  background: var(--bg-card);
+  color: var(--text);
+}
+
+.form-error {
+  display: none;
+  font-size: 11px;
+  color: var(--red);
+  margin-top: 5px;
+  font-family: var(--font-mono);
+}
+
+/* ─── BOTONES DEL MODAL ──────────────────────── */
+.btn-primary {
+  width: 100%;
+  padding: 12px;
+  background: var(--accent);
+  color: #09090F;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.2px;
+  transition: opacity 0.2s, transform 0.1s;
+  margin-top: 8px;
+}
+
+.btn-primary:hover  { opacity: 0.88; }
+.btn-primary:active { transform: scale(0.98); }
+
+/* ─── BOTÓN AGREGAR VEHÍCULO (header) ───────── */
+.btn-add {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  background: var(--accent-dim);
+  border: 1px solid rgba(0,229,200,0.25);
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  white-space: nowrap;
+}
+
+.btn-add:hover {
+  background: rgba(0,229,200,0.16);
+  border-color: rgba(0,229,200,0.4);
+}
+
+/* ─── BADGES DE ROL ──────────────────────────── */
+.role-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: var(--font-mono);
+  letter-spacing: 0.3px;
+}
+
+.role-dueno  { background: var(--green-dim); color: var(--green); }
+.role-chofer { background: var(--accent-dim); color: var(--accent); }
+
+/* ─── BOTÓN ASIGNAR CHOFER en tarjeta ───────── */
+.btn-asignar {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-asignar:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-dim);
+}
+
+/* Chip de chofer asignado en el footer de la card */
+.chofer-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 0.3px;
+}
+
+.chofer-chip .chip-dot {
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+/* Loading state del select */
+.form-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Separador en modal */
+.modal-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 20px 0;
+}

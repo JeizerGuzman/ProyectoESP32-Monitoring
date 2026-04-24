@@ -63,9 +63,8 @@ function cerrarModalVehiculo() {
 }
 
 function crearVehiculo() {
-    const nombre       = document.getElementById("nombreVehiculo").value.trim();
+    const nombre        = document.getElementById("nombreVehiculo").value.trim();
     const identificador = document.getElementById("identificadorVehiculo").value.trim();
-
     let valido = true;
 
     if (!nombre) {
@@ -111,48 +110,38 @@ function crearVehiculo() {
 // ═══════════════════════════════════════════
 // MODAL — ASIGNAR CHOFER
 // ═══════════════════════════════════════════
-
-// vehiculo_id activo para la asignación en curso
 let _vehiculoIdActivo = null;
 
 function abrirModalChofer(vehiculoId, nombreVehiculo) {
     _vehiculoIdActivo = vehiculoId;
-
     document.getElementById("nombreVehiculoAsignar").textContent = nombreVehiculo;
     document.getElementById("errorSelectChofer").style.display = "none";
 
-    // Resetear select mientras carga
     const select = document.getElementById("selectChofer");
     select.innerHTML = '<option value="">Cargando choferes...</option>';
     select.disabled = true;
 
     document.getElementById("modalChofer").classList.add("active");
 
-    // Cargar choferes desde el servidor
     fetch("/api/choferes")
         .then(res => res.json())
         .then(data => {
             select.innerHTML = "";
-
             if (!data.choferes || data.choferes.length === 0) {
                 select.innerHTML = '<option value="">Sin choferes registrados</option>';
                 select.disabled = true;
                 return;
             }
-
-            // Opción vacía inicial
             const placeholder = document.createElement("option");
             placeholder.value = "";
             placeholder.textContent = "Seleccionar chofer...";
             select.appendChild(placeholder);
-
             data.choferes.forEach(c => {
                 const opt = document.createElement("option");
                 opt.value = c.id;
                 opt.textContent = `${c.nombre} — ${c.correo}`;
                 select.appendChild(opt);
             });
-
             select.disabled = false;
         })
         .catch(() => {
@@ -167,13 +156,11 @@ function cerrarModalChofer() {
 
 function confirmarAsignacion() {
     const chofer_id = document.getElementById("selectChofer").value;
-
     if (!chofer_id) {
         document.getElementById("errorSelectChofer").textContent = "Selecciona un chofer";
         document.getElementById("errorSelectChofer").style.display = "block";
         return;
     }
-
     document.getElementById("errorSelectChofer").style.display = "none";
 
     fetch(`/api/vehiculos/${_vehiculoIdActivo}/asignar`, {
@@ -183,19 +170,14 @@ function confirmarAsignacion() {
     })
     .then(res => res.json())
     .then(data => {
-        if (data.ok) {
-            cerrarModalChofer();
-            actualizarEstado();
-        } else {
-            alert(data.error || "Error al asignar chofer");
-        }
+        if (data.ok) { cerrarModalChofer(); actualizarEstado(); }
+        else alert(data.error || "Error al asignar chofer");
     })
     .catch(() => alert("Error de conexión"));
 }
 
 function desasignarChofer() {
     if (!_vehiculoIdActivo) return;
-
     fetch(`/api/vehiculos/${_vehiculoIdActivo}/asignar`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -203,12 +185,8 @@ function desasignarChofer() {
     })
     .then(res => res.json())
     .then(data => {
-        if (data.ok) {
-            cerrarModalChofer();
-            actualizarEstado();
-        } else {
-            alert(data.error || "Error al desasignar");
-        }
+        if (data.ok) { cerrarModalChofer(); actualizarEstado(); }
+        else alert(data.error || "Error al desasignar");
     })
     .catch(() => alert("Error de conexión"));
 }
@@ -216,7 +194,6 @@ function desasignarChofer() {
 // ═══════════════════════════════════════════
 // MODAL — ELIMINAR VEHÍCULO
 // ═══════════════════════════════════════════
-
 let _vehiculoIdEliminar = null;
 
 function abrirModalEliminar(vehiculoId, nombreVehiculo) {
@@ -232,15 +209,11 @@ function cerrarModalEliminar() {
 
 function confirmarEliminacion() {
     if (!_vehiculoIdEliminar) return;
-
-    fetch(`/api/vehiculos/${_vehiculoIdEliminar}`, {
-        method: "DELETE"
-    })
+    fetch(`/api/vehiculos/${_vehiculoIdEliminar}`, { method: "DELETE" })
     .then(res => res.json())
     .then(data => {
         if (data.ok) {
             cerrarModalEliminar();
-            // Eliminar la tarjeta del DOM directamente para feedback inmediato
             const card = document.getElementById(`card-${_vehiculoIdEliminar}`);
             if (card) card.remove();
             actualizarEstado();
@@ -249,6 +222,335 @@ function confirmarEliminacion() {
         }
     })
     .catch(() => alert("Error de conexión"));
+}
+
+// ═══════════════════════════════════════════
+// MODAL — HISTORIAL
+// ═══════════════════════════════════════════
+let _historialChart = null;
+
+function abrirModalHistorial(vehiculoId, nombreVehiculo) {
+    document.getElementById("historialNombreVehiculo").textContent = nombreVehiculo;
+    document.getElementById("historialCargando").style.display = "block";
+    document.getElementById("historialTabla").style.display = "none";
+    document.getElementById("historialVacio").style.display = "none";
+    document.getElementById("historialBody").innerHTML = "";
+    document.getElementById("modalHistorial").classList.add("active");
+
+    // Destruir gráfica anterior si existe
+    if (_historialChart) {
+        _historialChart.destroy();
+        _historialChart = null;
+    }
+
+    fetch(`/api/historial/${vehiculoId}`)
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById("historialCargando").style.display = "none";
+
+            if (!data.rangos || data.rangos.length === 0) {
+                document.getElementById("historialVacio").style.display = "block";
+                return;
+            }
+
+            renderTablaHistorial(data.rangos);
+            renderGraficaHistorial(data.rangos);
+        })
+        .catch(() => {
+            document.getElementById("historialCargando").textContent = "Error al cargar historial";
+        });
+}
+
+function cerrarModalHistorial() {
+    document.getElementById("modalHistorial").classList.remove("active");
+    if (_historialChart) {
+        _historialChart.destroy();
+        _historialChart = null;
+    }
+}
+
+// ── Formatear segundos de duración en texto legible ──
+function formatDuracion(segundos) {
+    if (segundos < 60) return `${segundos}s`;
+    if (segundos < 3600) return `${Math.floor(segundos / 60)}m ${segundos % 60}s`;
+    const h = Math.floor(segundos / 3600);
+    const m = Math.floor((segundos % 3600) / 60);
+    return `${h}h ${m}m`;
+}
+
+function formatHora(ts) {
+    return new Date(ts * 1000).toLocaleTimeString("es-MX", { hour12: false });
+}
+
+function formatFechaHora(ts) {
+    return new Date(ts * 1000).toLocaleString("es-MX", {
+        day: "2-digit", month: "2-digit",
+        hour: "2-digit", minute: "2-digit", second: "2-digit",
+        hour12: false
+    });
+}
+
+// ── Renderizar tabla de rangos ──
+function renderTablaHistorial(rangos) {
+    const tbody = document.getElementById("historialBody");
+    tbody.innerHTML = "";
+
+    rangos.forEach(r => {
+        const duracion = r.fin - r.inicio;
+        const esAlerta = r.alerta === 1;
+        const esPuertaAbierta = r.puerta === "abierta";
+        const esVibracion = r.vibracion === 1;
+
+        const tr = document.createElement("tr");
+        if (esAlerta) tr.classList.add("fila-alerta");
+
+        tr.innerHTML = `
+            <td class="td-mono">${formatFechaHora(r.inicio)}</td>
+            <td class="td-mono">${formatFechaHora(r.fin)}</td>
+            <td class="td-mono td-duracion">${formatDuracion(duracion)}</td>
+            <td><span class="tag-estado ${esAlerta ? 'tag-warn' : 'tag-ok'}">${r.estado}</span></td>
+            <td><span class="tag-estado ${esPuertaAbierta ? 'tag-warn' : 'tag-ok'}">${r.puerta}</span></td>
+            <td><span class="tag-estado ${esVibracion ? 'tag-warn' : 'tag-ok'}">${esVibracion ? 'Detectada' : 'Normal'}</span></td>
+        `;
+        tbody.appendChild(tr);
+    });
+
+    document.getElementById("historialTabla").style.display = "table";
+}
+
+// ── Renderizar gráfica de línea de tiempo ──
+function renderGraficaHistorial(rangos) {
+    const canvas = document.getElementById("historialChart");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+
+    function obtenerColor(r) {
+        if (r.estado === "sin señal")                                          return "#FFB020";
+        if (r.alerta === 1 || r.puerta === "abierta" || r.vibracion === 1)     return "#FF4D6A";
+        return "#00E096";
+    }
+
+    // ── FUSIONAR rangos contiguos del mismo color ──────────────────
+    // rangos viene más-reciente-primero; lo invertimos para procesar cronológico
+    const cronologico = [...rangos].reverse();
+
+    const fusionados = [];
+    let actual = { ...cronologico[0], color: obtenerColor(cronologico[0]) };
+
+    for (let i = 1; i < cronologico.length; i++) {
+        const r     = cronologico[i];
+        const color = obtenerColor(r);
+
+        if (color === actual.color) {
+            // Mismo color → extender el rango actual
+            actual.fin = r.fin;
+        } else {
+            fusionados.push(actual);
+            actual = { ...r, color };
+        }
+    }
+    fusionados.push(actual);
+
+    // ── Escala lineal relativa (sin adapter de fechas) ─────────────
+    const tsBase = fusionados[0].inicio;
+    const tsMax  = fusionados[fusionados.length - 1].fin;
+
+    const barData = fusionados.map(r => ({
+        x:    [r.inicio - tsBase, r.fin - tsBase],
+        y:    "Timeline",
+        color: r.color,
+        meta:  r
+    }));
+
+    console.log("[Historial] rangos originales:", rangos.length,
+                "→ fusionados:", fusionados.length,
+                "| estados únicos:", [...new Set(fusionados.map(r => r.estado))]);
+
+    _historialChart = new Chart(ctx, {
+        type: "bar",
+        data: {
+            labels: ["Timeline"],
+            datasets: [{
+                label:              "Historial",
+                data:               barData,
+                backgroundColor:    barData.map(d => d.color),
+                borderWidth:        0,
+                borderRadius:       3,
+                barPercentage:      0.5,
+                categoryPercentage: 1.0,
+            }]
+        },
+        options: {
+            indexAxis: "y",
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            parsing: {
+                xAxisKey: "x",
+                yAxisKey: "y"
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        title: items => {
+                            const r = items[0].raw.meta;
+                            return `${formatFechaHora(r.inicio)} → ${formatFechaHora(r.fin)}`;
+                        },
+                        label: item => {
+                            const r = item.raw.meta;
+                            return [
+                                `Duración : ${formatDuracion(r.fin - r.inicio)}`,
+                                `Estado   : ${r.estado}`,
+                                `Puerta   : ${r.puerta}`,
+                                `Vibración: ${r.vibracion === 1 ? "Detectada" : "Normal"}`
+                            ];
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    type: "linear",
+                    min:  0,
+                    max:  tsMax - tsBase,
+                    ticks: {
+                        color: "#6B7280",
+                        font:  { size: 10 },
+                        callback: val =>
+                            new Date((tsBase + val) * 1000)
+                                .toLocaleTimeString("es-MX", { hour12: false })
+                    },
+                    grid: { color: "rgba(255,255,255,0.05)" }
+                },
+                y: { display: false }
+            }
+        }
+    });
+}
+
+// ── Config para Chart.js v2 ──────────────────────────────
+function _configV2(barData, tsBase, tsMax) {
+    return {
+        type: "horizontalBar",
+        data: {
+            labels: ["Timeline"],
+            datasets: barData.map(d => ({
+                label:           "",
+                data:            [d.x[1]],           // v2: ancho = valor único
+                backgroundColor: d.color,
+                borderWidth:     0,
+                // v2 no soporta floating bars nativas — usamos base
+                base:            d.x[0],
+            }))
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            legend:    { display: false },
+            animation: { duration: 0 },
+            tooltips: {
+                callbacks: {
+                    title: (items, data) => {
+                        const idx = items[0].datasetIndex;
+                        const r   = barData[idx].meta;
+                        return `${formatFechaHora(r.inicio)} → ${formatFechaHora(r.fin)}`;
+                    },
+                    label: (item, data) => {
+                        const r = barData[item.datasetIndex].meta;
+                        return [
+                            `Duración : ${formatDuracion(r.fin - r.inicio)}`,
+                            `Estado   : ${r.estado}`,
+                            `Puerta   : ${r.puerta}`,
+                            `Vibración: ${r.vibracion === 1 ? "Detectada" : "Normal"}`
+                        ];
+                    }
+                }
+            },
+            scales: {
+                xAxes: [{
+                    type: "linear",
+                    ticks: {
+                        min: 0,
+                        max: tsMax - tsBase,
+                        fontColor: "#6B7280",
+                        fontSize:  10,
+                        callback: val => {
+                            return new Date((tsBase + val) * 1000)
+                                .toLocaleTimeString("es-MX", { hour12: false });
+                        }
+                    },
+                    gridLines: { color: "rgba(255,255,255,0.05)" }
+                }],
+                yAxes: [{ display: false }]
+            }
+        }
+    };
+}
+
+// ── Config para Chart.js v3 / v4 ────────────────────────
+function _configV3(barData, tsBase, tsMax) {
+    return {
+        type: "bar",
+        data: {
+            labels: ["Timeline"],
+            datasets: [{
+                label:           "Historial",
+                data:            barData,
+                backgroundColor: barData.map(d => d.color),
+                borderWidth:     0,
+                borderRadius:    3,
+                barPercentage:   0.5,
+                categoryPercentage: 1.0,
+            }]
+        },
+        options: {
+            indexAxis: "y",
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            parsing: {
+                xAxisKey: "x",
+                yAxisKey: "y"
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        title: items => {
+                            const r = items[0].raw.meta;
+                            return `${formatFechaHora(r.inicio)} → ${formatFechaHora(r.fin)}`;
+                        },
+                        label: item => {
+                            const r = item.raw.meta;
+                            return [
+                                `Duración : ${formatDuracion(r.fin - r.inicio)}`,
+                                `Estado   : ${r.estado}`,
+                                `Puerta   : ${r.puerta}`,
+                                `Vibración: ${r.vibracion === 1 ? "Detectada" : "Normal"}`
+                            ];
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    type: "linear",
+                    min:  0,
+                    max:  tsMax - tsBase,
+                    ticks: {
+                        color: "#6B7280",
+                        font:  { size: 10 },
+                        callback: val =>
+                            new Date((tsBase + val) * 1000)
+                                .toLocaleTimeString("es-MX", { hour12: false })
+                    },
+                    grid: { color: "rgba(255,255,255,0.05)" }
+                },
+                y: { display: false }
+            }
+        }
+    };
 }
 
 // ═══════════════════════════════════════════
@@ -290,7 +592,6 @@ function renderDatos(data) {
         return;
     }
 
-    // ── CAMBIO CLAVE: comparar tarjetas actuales vs datos nuevos ──
     const tarjetasActuales = Array.from(contenedor.querySelectorAll('.vehicle-card'))
         .map(c => c.id.replace('card-', ''));
     const keysNuevos = keys.map(k => data[k].vehiculo_id?.toString() || k);
@@ -300,7 +601,6 @@ function renderDatos(data) {
         keysNuevos.every(k => tarjetasActuales.includes(k));
 
     if (!mismoConjunto || contenedor.querySelector('.skeleton') || contenedor.querySelector('.empty-state')) {
-        // Reconstruir si cambia la cantidad o composición de vehículos
         contenedor.innerHTML = "";
         keys.forEach((key, i) => {
             contenedor.innerHTML += crearTarjetaHTML(key, data[key], i, tipo);
@@ -308,14 +608,16 @@ function renderDatos(data) {
         return;
     }
 
-    // Actualización incremental normal (solo datos, sin reconstruir DOM)
     keys.forEach(key => actualizarTarjeta(key, data[key]));
 }
 
 // ─── CREAR HTML DE TARJETA ────────────────────
 function crearTarjetaHTML(key, v, index, tipo) {
     const esAlerta = v.alerta === 1;
-    const claseCard = esAlerta ? "vehicle-card alerta" : "vehicle-card normal";
+    const esSinSenal = v.estado === 'sin señal';
+    let claseCard = "vehicle-card normal";
+    if (esAlerta) claseCard = "vehicle-card alerta";
+    else if (esSinSenal) claseCard = "vehicle-card sin-senal";
     const ts = v.timestamp
         ? new Date(v.timestamp * 1000).toLocaleTimeString("es-MX", { hour12: false })
         : "--:--";
@@ -329,63 +631,68 @@ function crearTarjetaHTML(key, v, index, tipo) {
             Alerta activa — revisar unidad
         </div>` : "";
 
-    // Chofer asignado (si el backend lo devuelve)
     const choferInfo = v.chofer_nombre
-        ? `<div class="chofer-chip">
-               <div class="chip-dot"></div>
-               ${v.chofer_nombre}
-           </div>`
+        ? `<div class="chofer-chip"><div class="chip-dot"></div>${v.chofer_nombre}</div>`
         : `<div class="chofer-chip" style="color:var(--text-dim);">Sin chofer asignado</div>`;
 
-    // Botón asignar solo para dueños
     const btnAcciones = tipo === "dueno" ? `
+        <button class="btn-historial" onclick="abrirModalHistorial(${v.vehiculo_id}, '${v.vehiculo}')">
+            <svg width="11" height="11" viewBox="0 0 14 14" fill="none">
+                <circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.3"/>
+                <path d="M7 4v3.5l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+            Historial
+        </button>
         <button class="btn-asignar" onclick="abrirModalChofer(${v.vehiculo_id}, '${v.vehiculo}')">
             <svg width="11" height="11" viewBox="0 0 14 14" fill="none">
                 <circle cx="7" cy="5" r="3" stroke="currentColor" stroke-width="1.3"/>
                 <path d="M1 13c0-3 2.5-5 6-5s6 2 6 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
             </svg>
-            Asignar chofer
+            Chofer
         </button>
         <button class="btn-eliminar" onclick="abrirModalEliminar(${v.vehiculo_id}, '${v.vehiculo}')">
             <svg width="11" height="11" viewBox="0 0 14 14" fill="none">
                 <path d="M2 4h10M5 4V2h4v2M6 7v4M8 7v4M3 4l1 8h6l1-8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
-        </button>` : "";
+        </button>` : `
+        <button class="btn-historial" onclick="abrirModalHistorial(${v.vehiculo_id}, '${v.vehiculo}')">
+            <svg width="11" height="11" viewBox="0 0 14 14" fill="none">
+                <circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.3"/>
+                <path d="M7 4v3.5l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+            Historial
+        </button>`;
 
     return `
-        <div class="${claseCard}" data-vehiculo="${key}" id="card-${key}" style="animation-delay:${index * 0.06}s">
+        <div class="${claseCard}" data-vehiculo="${key}" id="card-${v.vehiculo_id}" style="animation-delay:${index * 0.06}s">
             ${alertaBar}
             <div class="card-header">
                 <div>
                     <div class="card-name">${v.vehiculo}</div>
                     <div class="card-plate">ESP32 · UART 115200</div>
                 </div>
-                <div class="status-badge ${esAlerta ? 'warn' : 'ok'}">
+                <div class="status-badge ${esAlerta ? 'warn' : esSinSenal ? 'mid' : 'ok'}">
                     <div class="badge-dot"></div>
                     ${v.estado}
                 </div>
             </div>
-
             <div class="card-metrics">
                 <div class="metric">
                     <div class="metric-label">ESTADO</div>
-                    <div class="metric-value estado-val ${esAlerta ? 'warn' : 'ok'}">${v.estado}</div>
+                    <div class="metric-value estado-val ${esAlerta ? 'warn' : v.estado === 'sin señal' ? 'mid' : 'ok'}">${v.estado}</div>
                 </div>
                 <div class="metric">
                     <div class="metric-label">PUERTA</div>
-                    <div class="metric-value puerta-val ${v.puerta === 'abierta' ? 'warn' : 'ok'}">${v.puerta}</div>
+                    <div class="metric-value puerta-val ${v.puerta === 'abierta' ? 'warn' : v.puerta === 'desconocida' ? 'mid' : 'ok'}">${v.puerta}</div>
                 </div>
                 <div class="metric">
                     <div class="metric-label">VIBRACIÓN</div>
-                    <div class="metric-value vibracion-val ${v.vibracion === 1 ? 'warn' : 'ok'}">${v.vibracion === 1 ? 'Detectada' : 'Normal'}</div>
+                    <div class="metric-value vibracion-val ${v.vibracion === 1 ? 'warn' : v.estado === 'sin señal' ? 'mid' : 'ok'}">${v.vibracion === 1 ? 'Detectada' : v.estado === 'sin señal' ? 'desconocida' : 'Normal'}</div>
                 </div>
             </div>
-
             <div class="card-footer">
-                <div style="display:flex; align-items:center; gap:12px;">
-                    ${choferInfo}
-                </div>
-                <div style="display:flex; align-items:center; gap:10px;">
+                <div style="display:flex;align-items:center;gap:12px;">${choferInfo}</div>
+                <div style="display:flex;align-items:center;gap:8px;">
                     ${btnAcciones}
                     <div class="card-footer-ts">Actualizado: <span class="timestamp">${ts}</span></div>
                 </div>
@@ -395,7 +702,7 @@ function crearTarjetaHTML(key, v, index, tipo) {
 
 // ─── ACTUALIZAR TARJETA EXISTENTE ─────────────
 function actualizarTarjeta(key, v) {
-    const card = document.getElementById(`card-${key}`);
+    const card = document.getElementById(`card-${v.vehiculo_id}`);
     if (!card) return;
 
     const esAlerta = v.alerta === 1;
@@ -403,9 +710,12 @@ function actualizarTarjeta(key, v) {
         ? new Date(v.timestamp * 1000).toLocaleTimeString("es-MX", { hour12: false })
         : "--:--";
 
-    card.className = `vehicle-card ${esAlerta ? 'alerta' : 'normal'}`;
+    const esSinSenal = v.estado === 'sin señal';
 
-    // Barra de alerta
+    card.className = `vehicle-card ${
+        esAlerta ? 'alerta' : esSinSenal ? 'sin-senal' : 'normal'
+    }`;
+
     let alertBar = card.querySelector('.alert-bar');
     if (esAlerta && !alertBar) {
         card.querySelector('.card-header').insertAdjacentHTML('beforebegin', `
@@ -420,30 +730,29 @@ function actualizarTarjeta(key, v) {
         alertBar.remove();
     }
 
-    // Badge de estado
     const badge = card.querySelector('.status-badge');
-    badge.className = `status-badge ${esAlerta ? 'warn' : 'ok'}`;
+    badge.className = `status-badge ${
+        esAlerta ? 'warn' : v.estado === 'sin señal' ? 'mid' : 'ok'
+    }`;
+
     badge.innerHTML = `<div class="badge-dot"></div>${v.estado}`;
 
-    // Métricas
     const estadoEl    = card.querySelector('.estado-val');
     const puertaEl    = card.querySelector('.puerta-val');
     const vibracionEl = card.querySelector('.vibracion-val');
 
-    estadoEl.className    = `metric-value estado-val ${esAlerta ? 'warn' : 'ok'}`;
-    estadoEl.textContent  = v.estado;
+    estadoEl.className   = `metric-value estado-val ${esAlerta ? 'warn' : v.estado === 'sin señal' ? 'mid' : 'ok'}`;
+    estadoEl.textContent = v.estado;
 
-    puertaEl.className    = `metric-value puerta-val ${v.puerta === 'abierta' ? 'warn' : 'ok'}`;
-    puertaEl.textContent  = v.puerta;
+    puertaEl.className   = `metric-value puerta-val ${v.puerta === 'abierta' ? 'warn' : v.puerta === 'desconocida' ? 'mid' : 'ok'}`;
+    puertaEl.textContent = v.puerta;
 
-    vibracionEl.className   = `metric-value vibracion-val ${v.vibracion === 1 ? 'warn' : 'ok'}`;
-    vibracionEl.textContent = v.vibracion === 1 ? 'Detectada' : 'Normal';
+    vibracionEl.className   = `metric-value vibracion-val ${v.vibracion === 1 ? 'warn' : v.estado === 'sin señal' ? 'mid' : 'ok'}`;
+    vibracionEl.textContent = v.vibracion === 1 ? 'Detectada' : v.estado === 'sin señal' ? 'desconocida' : 'Normal';
 
-    // Timestamp
     const tsEl = card.querySelector('.timestamp');
     if (tsEl) tsEl.textContent = ts;
 
-    // Chofer chip
     const choferChip = card.querySelector('.chofer-chip');
     if (choferChip) {
         if (v.chofer_nombre) {

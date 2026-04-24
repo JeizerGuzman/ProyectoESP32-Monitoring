@@ -4,60 +4,67 @@
 /* ================= CONFIGURACIÓN ================= */
 const char* ssid     = "erick_2.4G";
 const char* password = "secom100";
-// Asegúrate de que esta IP sea la correcta de tu PC con Flask
-const char* server   = "http://192.168.0.102:5000/datos";
+const char* server   = "http://192.168.0.103:5000/datos";
 
 /* ================= UART FPGA ================= */
-// Usamos el Serial 2 del ESP32 (Pines 16 RX y 17 TX)
 HardwareSerial SerialFPGA(2);
 
 /* ================= VARIABLES ================= */
-String vehiculo  = "camion_1";
+String vehiculo  = "camion_2";
 String estado    = "activo";
 String puerta    = "cerrada";
 int    alerta    = 0;
 int    vibracion = 0;
 
-// Variables para comparar y detectar cambios
 String estadoAnterior    = "";
 String puertaAnterior    = "";
 int    alertaAnterior    = -1;
 int    vibracionAnterior = -1;
 
 unsigned long ultimoEnvio = 0;
-// Intervalo configurable desde config.py (convertido a ms)
-const unsigned long INTERVALO_MAXIMO = 1500; 
+const unsigned long INTERVALO_MAXIMO = 1500;
+
+/* ======= CONTROL DE RECONEXIÓN WIFI ======= */
+unsigned long ultimoIntentoWiFi = 0;
 
 /* ================= SETUP ================= */
 void setup() {
-  // Monitor Serial para depuración
   Serial.begin(115200);
-
-  // Comunicación con la FPGA: Ambos deben estar a la misma velocidad.
-  // Si tu FPGA transmite a 115200, deja este valor.
   SerialFPGA.begin(115200, SERIAL_8N1, 16, 17);
 
   WiFi.begin(ssid, password);
+
+  Serial.print("Conectando a WiFi");
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
+
   Serial.println("\nWiFi conectado: " + WiFi.localIP().toString());
 }
 
 /* ================= LOOP ================= */
 void loop() {
-  // Verificación de conexión
+
+  /* ======= MANEJO CORRECTO DE WIFI ======= */
   if (WiFi.status() != WL_CONNECTED) {
-    WiFi.reconnect();
-    delay(1000);
-    return;
+    unsigned long ahora = millis();
+
+    // Solo intenta reconectar cada 5 segundos
+    if (ahora - ultimoIntentoWiFi > 5000) {
+      Serial.println("Intentando reconectar WiFi...");
+      WiFi.disconnect();
+      WiFi.begin(ssid, password);
+      ultimoIntentoWiFi = ahora;
+    }
+
+    return; // no seguimos si no hay WiFi
   }
 
-  // 1. Revisar si entró algo por el puerto de la FPGA
+  // 1. Leer FPGA
   bool huboDato = leerUART_FPGA();
 
-  // 2. Detectar si el estado actual es diferente al que enviamos la última vez
+  // 2. Detectar cambios
   bool cambioReal = (estado    != estadoAnterior)
                  || (puerta    != puertaAnterior)
                  || (alerta    != alertaAnterior)
@@ -66,19 +73,17 @@ void loop() {
   unsigned long ahora = millis();
   bool tiempoExcedido = (ahora - ultimoEnvio) >= INTERVALO_MAXIMO;
 
-  // 3. ENVIAR SOLO SI: Hay un cambio real O si ya pasó el tiempo de seguridad
+  // 3. Enviar si corresponde
   if (cambioReal || tiempoExcedido) {
     enviarDatos();
     ultimoEnvio = ahora;
 
-    // Actualizamos el historial para la siguiente comparación
     estadoAnterior    = estado;
     puertaAnterior    = puerta;
     alertaAnterior    = alerta;
     vibracionAnterior = vibracion;
   }
 
-  // Delay mínimo de 10ms para estabilidad del procesador
   delay(10);
 }
 
@@ -118,6 +123,7 @@ bool leerUART_FPGA() {
       puerta = "cerrada";
     }
   }
+
   return recibiAlgo;
 }
 
@@ -126,16 +132,11 @@ void enviarDatos() {
   if (WiFi.status() != WL_CONNECTED) return;
 
   HTTPClient http;
-  
-  // Iniciamos la conexión al servidor
+
   http.begin(server);
   http.addHeader("Content-Type", "application/json");
-  
-  // Timeout corto: Si el servidor no responde en 800ms, abortamos 
-  // para no congelar la lectura de la FPGA.
-  http.setTimeout(800);
+  http.setTimeout(800); // NO lo cambié como pediste
 
-  // Construcción manual del JSON
   String json = "{";
   json += "\"vehiculo\":\""  + vehiculo        + "\",";
   json += "\"estado\":\""    + estado          + "\",";
@@ -145,7 +146,7 @@ void enviarDatos() {
   json += "}";
 
   Serial.println(">>> Enviando a Flask...");
-  
+
   int code = http.POST(json);
 
   if (code > 0) {

@@ -243,6 +243,8 @@ header {
   overflow: hidden;
 }
 
+
+
 @keyframes cardIn {
   from { opacity: 0.8; transform: translateY(3px); }
   to   { opacity: 1; transform: translateY(0); }
@@ -258,12 +260,18 @@ header {
   border-radius: var(--radius) var(--radius) 0 0;
 }
 
+
 .vehicle-card.alerta::before  { background: var(--red); }
 .vehicle-card.normal::before  { background: var(--green); }
-
+.vehicle-card.sin-senal::before {background: var(--amber);}
 .vehicle-card:hover {
   border-color: var(--border-hover);
   /* Sin transform para evitar movimientos */
+}
+
+.vehicle-card.sin-senal {
+  border: 1px solid rgba(255,176,32,0.25);
+  box-shadow: 0 0 12px rgba(255,176,32,0.08);
 }
 
 /* Cabecera de la card */
@@ -699,3 +707,117 @@ header {
   color: var(--red);
   background: var(--red-dim);
 }
+
+/* ─── Pega esto al final de dashboard.css ───── */
+
+/* Modal ancho para historial */
+.modal-content-wide {
+  max-width: 720px;
+  width: 95%;
+}
+
+/* Gráfica */
+.historial-chart-wrap {
+  height: 140px;
+  margin-bottom: 20px;
+  background: var(--bg-input);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+}
+
+/* Tabla de historial */
+.historial-table-wrap {
+  max-height: 340px;
+  overflow-y: auto;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.historial-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.historial-table thead {
+  position: sticky;
+  top: 0;
+  background: var(--bg-card2);
+  z-index: 1;
+}
+
+.historial-table th {
+  padding: 10px 14px;
+  text-align: left;
+  color: var(--text-dim);
+  font-size: 9px;
+  letter-spacing: 0.8px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.historial-table td {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  vertical-align: middle;
+}
+
+.historial-table tr:last-child td { border-bottom: none; }
+
+.historial-table tr:hover td { background: var(--bg-input); }
+
+.fila-alerta td { background: rgba(255,77,106,0.04); }
+.fila-alerta:hover td { background: rgba(255,77,106,0.08) !important; }
+
+.td-mono { font-family: var(--font-mono); font-size: 11px; }
+.td-duracion { color: var(--text-dim); }
+
+/* Tags de estado dentro de la tabla */
+.tag-estado {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.3px;
+}
+
+.tag-ok   { background: var(--green-dim); color: var(--green); }
+.tag-warn { background: var(--red-dim);   color: var(--red);   }
+
+/* Botón historial en tarjeta */
+.btn-historial {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-historial:hover {
+  border-color: var(--amber);
+  color: var(--amber);
+  background: var(--amber-dim);
+}
+
+@media (max-width: 600px) {
+  .modal-content-wide { width: 98%; padding: 18px; }
+  .historial-chart-wrap { height: 110px; }
+  .historial-table-wrap { max-height: 240px; }
+  .historial-table th,
+  .historial-table td { padding: 7px 10px; font-size: 10px; }
+}
+

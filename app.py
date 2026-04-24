@@ -275,6 +275,34 @@ def asignar_chofer(vehiculo_id):
         print(f"Error al asignar chofer: {e}")
         return jsonify({"error": "error interno del servidor"}), 500
 
+# ================= API ELIMINAR VEHÍCULO =================
+@app.route('/api/vehiculos/<int:vehiculo_id>', methods=['DELETE'])
+def eliminar_vehiculo(vehiculo_id):
+    if 'id' not in session:
+        return jsonify({"error": "no autenticado"}), 401
+
+    if session.get('tipo') != 'dueno':
+        return jsonify({"error": "solo los dueños pueden eliminar vehículos"}), 403
+
+    try:
+        # Verificar que el vehículo existe y pertenece al dueño
+        vehiculo = Vehiculo.query.filter_by(id=vehiculo_id, usuario_id=session['id']).first()
+        if not vehiculo:
+            return jsonify({"error": "vehículo no encontrado"}), 404
+
+        # Eliminar historial asociado primero (integridad referencial)
+        Historial.query.filter_by(id_vehiculo=vehiculo_id).delete()
+
+        db.session.delete(vehiculo)
+        db.session.commit()
+        return jsonify({"ok": True}), 200
+
+    except Exception as e:
+        db.session.rollback()
+        print(f"Error al eliminar vehículo: {e}")
+        return jsonify({"error": "error interno del servidor"}), 500
+    
+
 # ================= RECIBIR DATOS ESP32 =================
 @app.route('/datos', methods=['POST'])
 def recibir_datos():
@@ -360,27 +388,36 @@ def obtener_estado():
     ).order_by(Historial.id.desc()).limit(app.config['MAX_RECORDS_LIMIT']).all()
 
     resultado = {}
-    
-    # Crear un mapa nombre_vehiculo -> id_vehiculo
-    vehiculo_map = {v.nombre: v for v in vehiculos_usuario}
 
+    # Primero inicializar todos los vehículos con estado "sin señal"
+    for v in vehiculos_usuario:
+        resultado[v.nombre] = {
+            "vehiculo":      v.nombre,
+            "vehiculo_id":   v.id,
+            "chofer_nombre": _nombre_chofer(v),
+            "estado":        "sin señal",
+            "alerta":        0,
+            "puerta":        "desconocida",
+            "vibracion":     0,
+            "timestamp":     None
+        }
+
+    # Luego sobreescribir con datos reales si hay historial
     for r in registros:
         vehiculo_obj = next((v for v in vehiculos_usuario if v.id == r.id_vehiculo), None)
-        if vehiculo_obj:
-            nombre_vehiculo = vehiculo_obj.nombre
-            # Solo tomamos el registro más reciente por vehículo
-            if nombre_vehiculo not in resultado:
-                resultado[nombre_vehiculo] = {
-                    "vehiculo":      nombre_vehiculo,
-                    "vehiculo_id":   vehiculo_obj.id,            
-                    "chofer_nombre": _nombre_chofer(vehiculo_obj),    
-                    "estado":        r.estado,
-                    "alerta":        r.alerta,
-                    "puerta":        r.puerta,
-                    "vibracion":     r.vibracion,
-                    "timestamp":     r.timestamp
-                }
-    
+        if vehiculo_obj and vehiculo_obj.nombre not in resultado or True:
+            nombre_vehiculo = vehiculo_obj.nombre if vehiculo_obj else None
+            if nombre_vehiculo and nombre_vehiculo in resultado:
+                # Solo el más reciente
+                if resultado[nombre_vehiculo]["timestamp"] is None:
+                    resultado[nombre_vehiculo].update({
+                        "estado":    r.estado,
+                        "alerta":    r.alerta,
+                        "puerta":    r.puerta,
+                        "vibracion": r.vibracion,
+                        "timestamp": r.timestamp
+                    })
+
     return jsonify(resultado), 200
 
 # ================= MAIN =================

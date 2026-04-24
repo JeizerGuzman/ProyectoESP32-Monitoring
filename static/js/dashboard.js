@@ -214,6 +214,44 @@ function desasignarChofer() {
 }
 
 // ═══════════════════════════════════════════
+// MODAL — ELIMINAR VEHÍCULO
+// ═══════════════════════════════════════════
+
+let _vehiculoIdEliminar = null;
+
+function abrirModalEliminar(vehiculoId, nombreVehiculo) {
+    _vehiculoIdEliminar = vehiculoId;
+    document.getElementById("nombreVehiculoEliminar").textContent = nombreVehiculo;
+    document.getElementById("modalEliminar").classList.add("active");
+}
+
+function cerrarModalEliminar() {
+    document.getElementById("modalEliminar").classList.remove("active");
+    _vehiculoIdEliminar = null;
+}
+
+function confirmarEliminacion() {
+    if (!_vehiculoIdEliminar) return;
+
+    fetch(`/api/vehiculos/${_vehiculoIdEliminar}`, {
+        method: "DELETE"
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.ok) {
+            cerrarModalEliminar();
+            // Eliminar la tarjeta del DOM directamente para feedback inmediato
+            const card = document.getElementById(`card-${_vehiculoIdEliminar}`);
+            if (card) card.remove();
+            actualizarEstado();
+        } else {
+            alert(data.error || "Error al eliminar vehículo");
+        }
+    })
+    .catch(() => alert("Error de conexión"));
+}
+
+// ═══════════════════════════════════════════
 // ESTADO Y RENDER
 // ═══════════════════════════════════════════
 function actualizarEstado() {
@@ -252,8 +290,17 @@ function renderDatos(data) {
         return;
     }
 
-    // Primera carga o estado vacío → reconstruir todo
-    if (contenedor.querySelector('.skeleton') || contenedor.querySelector('.empty-state')) {
+    // ── CAMBIO CLAVE: comparar tarjetas actuales vs datos nuevos ──
+    const tarjetasActuales = Array.from(contenedor.querySelectorAll('.vehicle-card'))
+        .map(c => c.id.replace('card-', ''));
+    const keysNuevos = keys.map(k => data[k].vehiculo_id?.toString() || k);
+
+    const mismoConjunto =
+        tarjetasActuales.length === keysNuevos.length &&
+        keysNuevos.every(k => tarjetasActuales.includes(k));
+
+    if (!mismoConjunto || contenedor.querySelector('.skeleton') || contenedor.querySelector('.empty-state')) {
+        // Reconstruir si cambia la cantidad o composición de vehículos
         contenedor.innerHTML = "";
         keys.forEach((key, i) => {
             contenedor.innerHTML += crearTarjetaHTML(key, data[key], i, tipo);
@@ -261,7 +308,7 @@ function renderDatos(data) {
         return;
     }
 
-    // Actualización incremental
+    // Actualización incremental normal (solo datos, sin reconstruir DOM)
     keys.forEach(key => actualizarTarjeta(key, data[key]));
 }
 
@@ -291,13 +338,18 @@ function crearTarjetaHTML(key, v, index, tipo) {
         : `<div class="chofer-chip" style="color:var(--text-dim);">Sin chofer asignado</div>`;
 
     // Botón asignar solo para dueños
-    const btnAsignar = tipo === "dueno" ? `
-        <button class="btn-asignar" onclick="abrirModalChofer(${v.vehiculo_id || "'"+ key +"'"}, '${v.vehiculo}')">
+    const btnAcciones = tipo === "dueno" ? `
+        <button class="btn-asignar" onclick="abrirModalChofer(${v.vehiculo_id}, '${v.vehiculo}')">
             <svg width="11" height="11" viewBox="0 0 14 14" fill="none">
                 <circle cx="7" cy="5" r="3" stroke="currentColor" stroke-width="1.3"/>
                 <path d="M1 13c0-3 2.5-5 6-5s6 2 6 5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
             </svg>
             Asignar chofer
+        </button>
+        <button class="btn-eliminar" onclick="abrirModalEliminar(${v.vehiculo_id}, '${v.vehiculo}')">
+            <svg width="11" height="11" viewBox="0 0 14 14" fill="none">
+                <path d="M2 4h10M5 4V2h4v2M6 7v4M8 7v4M3 4l1 8h6l1-8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
         </button>` : "";
 
     return `
@@ -334,7 +386,7 @@ function crearTarjetaHTML(key, v, index, tipo) {
                     ${choferInfo}
                 </div>
                 <div style="display:flex; align-items:center; gap:10px;">
-                    ${btnAsignar}
+                    ${btnAcciones}
                     <div class="card-footer-ts">Actualizado: <span class="timestamp">${ts}</span></div>
                 </div>
             </div>

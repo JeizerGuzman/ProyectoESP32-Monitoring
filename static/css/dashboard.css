@@ -676,3 +676,26 @@ header {
   background: var(--border);
   margin: 20px 0;
 }
+
+
+/* ─── BOTÓN ELIMINAR en tarjeta ─────────────── */
+
+.btn-eliminar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px; height: 30px;
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-eliminar:hover {
+  border-color: rgba(255,77,106,0.4);
+  color: var(--red);
+  background: var(--red-dim);
+}

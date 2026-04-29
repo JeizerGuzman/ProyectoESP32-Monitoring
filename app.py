@@ -386,4 +386,7 @@ def obtener_estado():
 
 # ================= MAIN =================
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    import os
+    port  = int(os.getenv('PORT', 5000))
+    debug = os.getenv('FLASK_ENV', 'production') == 'development'
+    app.run(host='0.0.0.0', port=port, debug=debug)

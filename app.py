@@ -369,18 +369,36 @@ def obtener_estado():
             "timestamp":     None
         }
 
-    for r in registros:
-        vehiculo_obj = next((v for v in vehiculos_usuario if v.id == r.id_vehiculo), None)
-        if vehiculo_obj:
-            nombre_vehiculo = vehiculo_obj.nombre
-            if nombre_vehiculo in resultado and resultado[nombre_vehiculo]["timestamp"] is None:
-                resultado[nombre_vehiculo].update({
-                    "estado":    r.estado,
-                    "alerta":    r.alerta,
-                    "puerta":    r.puerta,
-                    "vibracion": r.vibracion,
-                    "timestamp": r.timestamp
-                })
+        TIEMPO_LIMITE = 3  # segundos
+
+        tiempo_actual = int(time.time())
+
+        for r in registros:
+            vehiculo_obj = next((v for v in vehiculos_usuario if v.id == r.id_vehiculo), None)
+            if vehiculo_obj:
+                nombre_vehiculo = vehiculo_obj.nombre
+
+                if nombre_vehiculo in resultado and resultado[nombre_vehiculo]["timestamp"] is None:
+
+                    # 🔴 VALIDAR SI EL DATO ES VIEJO
+                    if tiempo_actual - r.timestamp > TIEMPO_LIMITE:
+                        # SIN SEÑAL
+                        resultado[nombre_vehiculo].update({
+                            "estado":    "sin señal",
+                            "alerta":    0,
+                            "puerta":    "desconocida",
+                            "vibracion": 0,
+                            "timestamp": r.timestamp
+                        })
+                    else:
+                        # DATOS EN TIEMPO REAL
+                        resultado[nombre_vehiculo].update({
+                            "estado":    r.estado,
+                            "alerta":    r.alerta,
+                            "puerta":    r.puerta,
+                            "vibracion": r.vibracion,
+                            "timestamp": r.timestamp
+                        })
 
     return jsonify(resultado), 200
 

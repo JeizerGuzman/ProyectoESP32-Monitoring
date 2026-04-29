@@ -4,13 +4,13 @@
 /* ================= CONFIGURACIÓN ================= */
 const char* ssid     = "erick_2.4G";
 const char* password = "secom100";
-const char* server   = "http://192.168.0.103:5000/datos";
+const char* server   = "http://192.168.0.100:5000/datos";
 
 /* ================= UART FPGA ================= */
 HardwareSerial SerialFPGA(2);
 
 /* ================= VARIABLES ================= */
-String vehiculo  = "camion_2";
+String vehiculo  = "camion_1";
 String estado    = "activo";
 String puerta    = "cerrada";
 int    alerta    = 0;

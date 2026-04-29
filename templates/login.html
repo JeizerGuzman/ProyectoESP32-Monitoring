@@ -27,7 +27,6 @@
 
     <!-- Mensajes -->
     <div class="auth-error" id="authError"></div>
-    <div class="auth-success" id="authSuccess"></div>
 
     <!-- Formulario -->
     <div class="form-group">
@@ -55,33 +54,6 @@
 </div>
 
 <script src="{{ url_for('static', filename='js/login.js') }}"></script>
-<script>
-  /* Sobreescribir login para mostrar error con clase CSS */
-  function login() {
-    const errorEl = document.getElementById("authError");
-    errorEl.classList.remove("visible");
 
-    fetch("/api/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        correo:   document.getElementById("correo").value,
-        password: document.getElementById("password").value
-      })
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.ok) {
-        window.location.href = "/panel";
-      } else {
-        errorEl.classList.add("visible");
-      }
-    })
-    .catch(() => {
-      errorEl.textContent = "Error de conexión con el servidor";
-      errorEl.classList.add("visible");
-    });
-  }
-</script>
 </body>
 </html>

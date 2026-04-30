@@ -4,7 +4,7 @@
 /* ================= CONFIGURACIÓN ================= */
 const char* ssid     = "erick_2.4G";
 const char* password = "secom100";
-const char* server   = "http://192.168.0.104:5000/datos";
+const char* server   = "https://tracksecurity.up.railway.app/datos";
 
 /* ================= UART FPGA ================= */
 HardwareSerial SerialFPGA(2);

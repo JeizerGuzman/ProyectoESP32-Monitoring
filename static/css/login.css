@@ -292,3 +292,12 @@ input:-webkit-autofill:focus {
   caret-color: var(--text);
   transition: background-color 9999s ease-in-out 0s;
 }
+
+/* ─── ERRORES DE CAMPO ───────────────────────── */
+.form-error {
+  display: none;
+  font-size: 11px;
+  color: var(--error);
+  margin-top: 5px;
+  font-family: 'DM Sans', sans-serif;
+}

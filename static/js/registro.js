@@ -109,9 +109,7 @@ function registrar() {
             document.getElementById("tipo").value = "";
             
             // Mostrar mensaje de éxito
-            const authSuccess = document.getElementById("authSuccess");
-            authSuccess.textContent = "Cuenta creada exitosamente. Redirigiendo...";
-            authSuccess.style.display = "block";
+            mostrarError("authSuccess", "Cuenta creada exitosamente. Redirigiendo...");
             
             // Redirigir al login después de 2 segundos
             setTimeout(() => {

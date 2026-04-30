@@ -247,3 +247,48 @@ body::after {
   .auth-card { padding: 32px 22px; border-radius: 16px; }
   .auth-title { font-size: 22px; }
 }
+
+
+/* ─── INPUT CON BOTÓN OJO ────────────────────── */
+.input-password-wrap {
+  position: relative;
+}
+
+.input-password-wrap .form-input {
+  padding-right: 46px; /* espacio para el botón */
+}
+
+.btn-eye {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.2s, background 0.2s;
+}
+
+.btn-eye:hover {
+  color: var(--text);
+  background: rgba(255,255,255,0.05);
+}
+
+
+
+/* ─── FIX AUTOCOMPLETADO NAVEGADOR ──────────── */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0px 1000px var(--bg-input) inset !important;
+  -webkit-text-fill-color: var(--text) !important;
+  caret-color: var(--text);
+  transition: background-color 9999s ease-in-out 0s;
+}

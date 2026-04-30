@@ -16,18 +16,16 @@ function inicializarDashboard() {
     localStorage.setItem("nombre", nombre);
     localStorage.setItem("tipo", tipo);
 
-    console.log(`[Dashboard] Usuario ${id_usuario} (${nombre}) conectado como ${tipo}`);
-
     document.getElementById("userName").textContent = nombre;
 
     const rolBadge = document.getElementById("rolBadge");
     if (tipo === "dueno") {
         rolBadge.textContent = "Dueño";
-        rolBadge.className = "role-badge role-dueno";
+        rolBadge.className   = "role-badge role-dueno";
         document.getElementById("btnAgregarVehiculo").style.display = "flex";
     } else if (tipo === "chofer") {
         rolBadge.textContent = "Chofer";
-        rolBadge.className = "role-badge role-chofer";
+        rolBadge.className   = "role-badge role-chofer";
         document.getElementById("btnAgregarVehiculo").style.display = "none";
     }
 
@@ -74,7 +72,6 @@ function crearVehiculo() {
     } else {
         document.getElementById("errorNombreVehiculo").style.display = "none";
     }
-
     if (!identificador) {
         document.getElementById("errorIdentificadorVehiculo").textContent = "El identificador es requerido";
         document.getElementById("errorIdentificadorVehiculo").style.display = "block";
@@ -82,7 +79,6 @@ function crearVehiculo() {
     } else {
         document.getElementById("errorIdentificadorVehiculo").style.display = "none";
     }
-
     if (!valido) return;
 
     fetch("/api/vehiculos", {
@@ -92,16 +88,12 @@ function crearVehiculo() {
     })
     .then(res => res.json())
     .then(data => {
-        if (data.ok) {
-            cerrarModalVehiculo();
-            actualizarEstado();
-        } else {
+        if (data.ok) { cerrarModalVehiculo(); actualizarEstado(); }
+        else {
             if (data.error && data.error.includes("identificador")) {
                 document.getElementById("errorIdentificadorVehiculo").textContent = data.error;
                 document.getElementById("errorIdentificadorVehiculo").style.display = "block";
-            } else {
-                alert(data.error || "Error al crear vehículo");
-            }
+            } else { alert(data.error || "Error al crear vehículo"); }
         }
     })
     .catch(() => alert("Error de conexión"));
@@ -119,8 +111,7 @@ function abrirModalChofer(vehiculoId, nombreVehiculo) {
 
     const select = document.getElementById("selectChofer");
     select.innerHTML = '<option value="">Cargando choferes...</option>';
-    select.disabled = true;
-
+    select.disabled  = true;
     document.getElementById("modalChofer").classList.add("active");
 
     fetch("/api/choferes")
@@ -129,13 +120,12 @@ function abrirModalChofer(vehiculoId, nombreVehiculo) {
             select.innerHTML = "";
             if (!data.choferes || data.choferes.length === 0) {
                 select.innerHTML = '<option value="">Sin choferes registrados</option>';
-                select.disabled = true;
+                select.disabled  = true;
                 return;
             }
-            const placeholder = document.createElement("option");
-            placeholder.value = "";
-            placeholder.textContent = "Seleccionar chofer...";
-            select.appendChild(placeholder);
+            const ph = document.createElement("option");
+            ph.value = ""; ph.textContent = "Seleccionar chofer...";
+            select.appendChild(ph);
             data.choferes.forEach(c => {
                 const opt = document.createElement("option");
                 opt.value = c.id;
@@ -144,9 +134,7 @@ function abrirModalChofer(vehiculoId, nombreVehiculo) {
             });
             select.disabled = false;
         })
-        .catch(() => {
-            select.innerHTML = '<option value="">Error al cargar choferes</option>';
-        });
+        .catch(() => { select.innerHTML = '<option value="">Error al cargar choferes</option>'; });
 }
 
 function cerrarModalChofer() {
@@ -162,7 +150,6 @@ function confirmarAsignacion() {
         return;
     }
     document.getElementById("errorSelectChofer").style.display = "none";
-
     fetch(`/api/vehiculos/${_vehiculoIdActivo}/asignar`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -217,9 +204,7 @@ function confirmarEliminacion() {
             const card = document.getElementById(`card-${_vehiculoIdEliminar}`);
             if (card) card.remove();
             actualizarEstado();
-        } else {
-            alert(data.error || "Error al eliminar vehículo");
-        }
+        } else { alert(data.error || "Error al eliminar vehículo"); }
     })
     .catch(() => alert("Error de conexión"));
 }
@@ -231,326 +216,243 @@ let _historialChart = null;
 
 function abrirModalHistorial(vehiculoId, nombreVehiculo) {
     document.getElementById("historialNombreVehiculo").textContent = nombreVehiculo;
-    document.getElementById("historialCargando").style.display = "block";
-    document.getElementById("historialTabla").style.display = "none";
-    document.getElementById("historialVacio").style.display = "none";
-    document.getElementById("historialBody").innerHTML = "";
+    document.getElementById("historialCargando").style.display     = "block";
+    document.getElementById("historialTabla").style.display        = "none";
+    document.getElementById("historialVacio").style.display        = "none";
+    document.getElementById("historialBody").innerHTML             = "";
     document.getElementById("modalHistorial").classList.add("active");
 
-    // Destruir gráfica anterior si existe
-    if (_historialChart) {
-        _historialChart.destroy();
-        _historialChart = null;
-    }
+    if (_historialChart) { _historialChart.destroy(); _historialChart = null; }
 
     fetch(`/api/historial/${vehiculoId}`)
         .then(res => res.json())
         .then(data => {
             document.getElementById("historialCargando").style.display = "none";
-
             if (!data.rangos || data.rangos.length === 0) {
                 document.getElementById("historialVacio").style.display = "block";
                 return;
             }
-
             renderTablaHistorial(data.rangos);
             renderGraficaHistorial(data.rangos);
         })
-        .catch(() => {
-            document.getElementById("historialCargando").textContent = "Error al cargar historial";
-        });
+        .catch(() => { document.getElementById("historialCargando").textContent = "Error al cargar historial"; });
 }
 
 function cerrarModalHistorial() {
     document.getElementById("modalHistorial").classList.remove("active");
-    if (_historialChart) {
-        _historialChart.destroy();
-        _historialChart = null;
-    }
+    if (_historialChart) { _historialChart.destroy(); _historialChart = null; }
 }
 
-// ── Formatear segundos de duración en texto legible ──
-function formatDuracion(segundos) {
-    if (segundos < 60) return `${segundos}s`;
-    if (segundos < 3600) return `${Math.floor(segundos / 60)}m ${segundos % 60}s`;
-    const h = Math.floor(segundos / 3600);
-    const m = Math.floor((segundos % 3600) / 60);
-    return `${h}h ${m}m`;
+function formatDuracion(s) {
+    if (s < 60) return `${s}s`;
+    if (s < 3600) return `${Math.floor(s/60)}m ${s%60}s`;
+    return `${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}m`;
 }
-
 function formatHora(ts) {
     return new Date(ts * 1000).toLocaleTimeString("es-MX", { hour12: false });
 }
-
 function formatFechaHora(ts) {
     return new Date(ts * 1000).toLocaleString("es-MX", {
-        day: "2-digit", month: "2-digit",
-        hour: "2-digit", minute: "2-digit", second: "2-digit",
-        hour12: false
+        day:"2-digit", month:"2-digit",
+        hour:"2-digit", minute:"2-digit", second:"2-digit", hour12: false
     });
 }
 
-// ── Renderizar tabla de rangos ──
 function renderTablaHistorial(rangos) {
     const tbody = document.getElementById("historialBody");
     tbody.innerHTML = "";
-
     rangos.forEach(r => {
-        const duracion = r.fin - r.inicio;
-        const esAlerta = r.alerta === 1;
-        const esPuertaAbierta = r.puerta === "abierta";
-        const esVibracion = r.vibracion === 1;
-
         const tr = document.createElement("tr");
-        if (esAlerta) tr.classList.add("fila-alerta");
-
+        if (r.alerta === 1) tr.classList.add("fila-alerta");
         tr.innerHTML = `
             <td class="td-mono">${formatFechaHora(r.inicio)}</td>
             <td class="td-mono">${formatFechaHora(r.fin)}</td>
-            <td class="td-mono td-duracion">${formatDuracion(duracion)}</td>
-            <td><span class="tag-estado ${esAlerta ? 'tag-warn' : 'tag-ok'}">${r.estado}</span></td>
-            <td><span class="tag-estado ${esPuertaAbierta ? 'tag-warn' : 'tag-ok'}">${r.puerta}</span></td>
-            <td><span class="tag-estado ${esVibracion ? 'tag-warn' : 'tag-ok'}">${esVibracion ? 'Detectada' : 'Normal'}</span></td>
-        `;
+            <td class="td-mono td-duracion">${formatDuracion(r.fin - r.inicio)}</td>
+            <td><span class="tag-estado ${r.alerta===1?'tag-warn':'tag-ok'}">${r.estado}</span></td>
+            <td><span class="tag-estado ${r.puerta==='abierta'?'tag-warn':'tag-ok'}">${r.puerta}</span></td>
+            <td><span class="tag-estado ${r.vibracion===1?'tag-warn':'tag-ok'}">${r.vibracion===1?'Detectada':'Normal'}</span></td>`;
         tbody.appendChild(tr);
     });
-
     document.getElementById("historialTabla").style.display = "table";
 }
 
-// ── Renderizar gráfica de línea de tiempo ──
 function renderGraficaHistorial(rangos) {
     const canvas = document.getElementById("historialChart");
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
 
-    function obtenerColor(r) {
-        if (r.estado === "sin señal")                                          return "#FFB020";
-        if (r.alerta === 1 || r.puerta === "abierta" || r.vibracion === 1)     return "#FF4D6A";
+    function color(r) {
+        if (r.estado === "sin señal") return "#FFB020";
+        if (r.alerta===1 || r.puerta==="abierta" || r.vibracion===1) return "#FF4D6A";
         return "#00E096";
     }
 
-    // ── FUSIONAR rangos contiguos del mismo color ──────────────────
-    // rangos viene más-reciente-primero; lo invertimos para procesar cronológico
     const cronologico = [...rangos].reverse();
-
-    const fusionados = [];
-    let actual = { ...cronologico[0], color: obtenerColor(cronologico[0]) };
-
+    const fusionados  = [];
+    let actual = { ...cronologico[0], color: color(cronologico[0]) };
     for (let i = 1; i < cronologico.length; i++) {
-        const r     = cronologico[i];
-        const color = obtenerColor(r);
-
-        if (color === actual.color) {
-            // Mismo color → extender el rango actual
-            actual.fin = r.fin;
-        } else {
-            fusionados.push(actual);
-            actual = { ...r, color };
-        }
+        const c = color(cronologico[i]);
+        if (c === actual.color) { actual.fin = cronologico[i].fin; }
+        else { fusionados.push(actual); actual = { ...cronologico[i], color: c }; }
     }
     fusionados.push(actual);
 
-    // ── Escala lineal relativa (sin adapter de fechas) ─────────────
     const tsBase = fusionados[0].inicio;
-    const tsMax  = fusionados[fusionados.length - 1].fin;
-
-    const barData = fusionados.map(r => ({
-        x:    [r.inicio - tsBase, r.fin - tsBase],
-        y:    "Timeline",
-        color: r.color,
-        meta:  r
-    }));
-
-    console.log("[Historial] rangos originales:", rangos.length,
-                "→ fusionados:", fusionados.length,
-                "| estados únicos:", [...new Set(fusionados.map(r => r.estado))]);
+    const tsMax  = fusionados[fusionados.length-1].fin;
+    const barData = fusionados.map(r => ({ x:[r.inicio-tsBase, r.fin-tsBase], y:"Timeline", color:r.color, meta:r }));
 
     _historialChart = new Chart(ctx, {
         type: "bar",
         data: {
             labels: ["Timeline"],
-            datasets: [{
-                label:              "Historial",
-                data:               barData,
-                backgroundColor:    barData.map(d => d.color),
-                borderWidth:        0,
-                borderRadius:       3,
-                barPercentage:      0.5,
-                categoryPercentage: 1.0,
-            }]
+            datasets: [{ label:"Historial", data:barData,
+                backgroundColor: barData.map(d=>d.color),
+                borderWidth:0, borderRadius:3,
+                barPercentage:0.5, categoryPercentage:1.0 }]
         },
         options: {
-            indexAxis: "y",
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: false,
-            parsing: {
-                xAxisKey: "x",
-                yAxisKey: "y"
-            },
+            indexAxis:"y", responsive:true, maintainAspectRatio:false, animation:false,
+            parsing:{ xAxisKey:"x", yAxisKey:"y" },
             plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        title: items => {
-                            const r = items[0].raw.meta;
-                            return `${formatFechaHora(r.inicio)} → ${formatFechaHora(r.fin)}`;
-                        },
-                        label: item => {
-                            const r = item.raw.meta;
-                            return [
-                                `Duración : ${formatDuracion(r.fin - r.inicio)}`,
-                                `Estado   : ${r.estado}`,
-                                `Puerta   : ${r.puerta}`,
-                                `Vibración: ${r.vibracion === 1 ? "Detectada" : "Normal"}`
-                            ];
-                        }
-                    }
-                }
+                legend:{ display:false },
+                tooltip:{ callbacks:{
+                    title: i => { const r=i[0].raw.meta; return `${formatFechaHora(r.inicio)} → ${formatFechaHora(r.fin)}`; },
+                    label: i => { const r=i.raw.meta; return [
+                        `Duración : ${formatDuracion(r.fin-r.inicio)}`,
+                        `Estado   : ${r.estado}`,
+                        `Puerta   : ${r.puerta}`,
+                        `Vibración: ${r.vibracion===1?"Detectada":"Normal"}`
+                    ];}
+                }}
             },
             scales: {
-                x: {
-                    type: "linear",
-                    min:  0,
-                    max:  tsMax - tsBase,
-                    ticks: {
-                        color: "#6B7280",
-                        font:  { size: 10 },
-                        callback: val =>
-                            new Date((tsBase + val) * 1000)
-                                .toLocaleTimeString("es-MX", { hour12: false })
-                    },
-                    grid: { color: "rgba(255,255,255,0.05)" }
-                },
-                y: { display: false }
+                x:{ type:"linear", min:0, max:tsMax-tsBase,
+                    ticks:{ color:"#6B7280", font:{size:10},
+                        callback: val => new Date((tsBase+val)*1000).toLocaleTimeString("es-MX",{hour12:false}) },
+                    grid:{ color:"rgba(255,255,255,0.05)" } },
+                y:{ display:false }
             }
         }
     });
 }
 
-// ── Config para Chart.js v2 ──────────────────────────────
-function _configV2(barData, tsBase, tsMax) {
-    return {
-        type: "horizontalBar",
-        data: {
-            labels: ["Timeline"],
-            datasets: barData.map(d => ({
-                label:           "",
-                data:            [d.x[1]],           // v2: ancho = valor único
-                backgroundColor: d.color,
-                borderWidth:     0,
-                // v2 no soporta floating bars nativas — usamos base
-                base:            d.x[0],
-            }))
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            legend:    { display: false },
-            animation: { duration: 0 },
-            tooltips: {
-                callbacks: {
-                    title: (items, data) => {
-                        const idx = items[0].datasetIndex;
-                        const r   = barData[idx].meta;
-                        return `${formatFechaHora(r.inicio)} → ${formatFechaHora(r.fin)}`;
-                    },
-                    label: (item, data) => {
-                        const r = barData[item.datasetIndex].meta;
-                        return [
-                            `Duración : ${formatDuracion(r.fin - r.inicio)}`,
-                            `Estado   : ${r.estado}`,
-                            `Puerta   : ${r.puerta}`,
-                            `Vibración: ${r.vibracion === 1 ? "Detectada" : "Normal"}`
-                        ];
-                    }
-                }
-            },
-            scales: {
-                xAxes: [{
-                    type: "linear",
-                    ticks: {
-                        min: 0,
-                        max: tsMax - tsBase,
-                        fontColor: "#6B7280",
-                        fontSize:  10,
-                        callback: val => {
-                            return new Date((tsBase + val) * 1000)
-                                .toLocaleTimeString("es-MX", { hour12: false });
-                        }
-                    },
-                    gridLines: { color: "rgba(255,255,255,0.05)" }
-                }],
-                yAxes: [{ display: false }]
-            }
-        }
-    };
+// ═══════════════════════════════════════════
+// MODAL — MAPA GPS
+// ═══════════════════════════════════════════
+let _mapaLeaflet     = null;
+let _mapaRuta        = null;
+let _mapaMarkerActual = null;
+let _mapaIntervalId  = null;
+let _mapaVehiculoId  = null;
+let _mapaPrimeraCarga = false;
+
+function abrirModalMapa(vehiculoId, nombreVehiculo) {
+    _mapaVehiculoId = vehiculoId;
+
+    document.getElementById("mapaNombreVehiculo").textContent    = nombreVehiculo;
+    document.getElementById("mapaSubtitulo").textContent         = "Cargando ruta...";
+    document.getElementById("mapaCargando").style.display        = "block";
+    document.getElementById("mapaVacio").style.display           = "none";
+    document.getElementById("mapaInfoBar").style.display         = "none";
+    document.getElementById("modalMapa").classList.add("active");
+
+    // Inicializar mapa Leaflet la primera vez
+    if (!_mapaLeaflet) {
+        _mapaLeaflet = L.map("mapaLeaflet", { zoomControl: true });
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+            attribution: "© OpenStreetMap",
+            maxZoom: 19
+        }).addTo(_mapaLeaflet);
+    }
+
+    _mapaPrimeraCarga = true;
+    cargarMapa().then(() => {
+        _mapaIntervalId = setInterval(() => {
+            _mapaPrimeraCarga = false;
+            cargarMapa();
+        }, 3000);
+    });
 }
 
-// ── Config para Chart.js v3 / v4 ────────────────────────
-function _configV3(barData, tsBase, tsMax) {
-    return {
-        type: "bar",
-        data: {
-            labels: ["Timeline"],
-            datasets: [{
-                label:           "Historial",
-                data:            barData,
-                backgroundColor: barData.map(d => d.color),
-                borderWidth:     0,
-                borderRadius:    3,
-                barPercentage:   0.5,
-                categoryPercentage: 1.0,
-            }]
-        },
-        options: {
-            indexAxis: "y",
-            responsive: true,
-            maintainAspectRatio: false,
-            animation: false,
-            parsing: {
-                xAxisKey: "x",
-                yAxisKey: "y"
-            },
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        title: items => {
-                            const r = items[0].raw.meta;
-                            return `${formatFechaHora(r.inicio)} → ${formatFechaHora(r.fin)}`;
-                        },
-                        label: item => {
-                            const r = item.raw.meta;
-                            return [
-                                `Duración : ${formatDuracion(r.fin - r.inicio)}`,
-                                `Estado   : ${r.estado}`,
-                                `Puerta   : ${r.puerta}`,
-                                `Vibración: ${r.vibracion === 1 ? "Detectada" : "Normal"}`
-                            ];
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: {
-                    type: "linear",
-                    min:  0,
-                    max:  tsMax - tsBase,
-                    ticks: {
-                        color: "#6B7280",
-                        font:  { size: 10 },
-                        callback: val =>
-                            new Date((tsBase + val) * 1000)
-                                .toLocaleTimeString("es-MX", { hour12: false })
-                    },
-                    grid: { color: "rgba(255,255,255,0.05)" }
-                },
-                y: { display: false }
+function cargarMapa() {
+    return fetch(`/api/mapa/${_mapaVehiculoId}`)
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById("mapaCargando").style.display = "none";
+
+            if (!data.puntos || data.puntos.length === 0) {
+                document.getElementById("mapaVacio").style.display = "block";
+                document.getElementById("mapaSubtitulo").textContent = "Sin datos GPS aún";
+                return;
             }
-        }
-    };
+
+            document.getElementById("mapaVacio").style.display   = "none";
+            document.getElementById("mapaInfoBar").style.display = "flex";
+
+            const ultima = data.ultima;
+            document.getElementById("mapaUltimaPosicion").textContent =
+                `${ultima.lat.toFixed(5)}, ${ultima.lng.toFixed(5)}`;
+            document.getElementById("mapaUltimoTs").textContent =
+                formatFechaHora(ultima.timestamp);
+            document.getElementById("mapaTotalPuntos").textContent =
+                `${data.total} puntos`;
+            document.getElementById("mapaSubtitulo").textContent =
+                `Ruta del día — ${data.total} puntos registrados`;
+
+            const coords = data.puntos.map(p => [p.lat, p.lng]);
+
+            if (_mapaRuta) { _mapaLeaflet.removeLayer(_mapaRuta); }
+
+            _mapaRuta = L.polyline(coords, {
+                color:   "#00E5C8",
+                weight:  3,
+                opacity: 0.8
+            }).addTo(_mapaLeaflet);
+
+            if (_mapaMarkerActual) { _mapaLeaflet.removeLayer(_mapaMarkerActual); }
+
+            const iconColor = ultima.alerta === 1 ? "#FF4D6A" : "#00E096";
+            const iconSvg = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 28 36">
+                    <path d="M14 0C6.27 0 0 6.27 0 14c0 10.5 14 22 14 22S28 24.5 28 14C28 6.27 21.73 0 14 0z"
+                        fill="${iconColor}" stroke="white" stroke-width="2"/>
+                    <circle cx="14" cy="14" r="5" fill="white"/>
+                </svg>`;
+
+            const icon = L.divIcon({
+                html:       iconSvg,
+                iconSize:   [28, 36],
+                iconAnchor: [14, 36],
+                className:  ""
+            });
+
+            _mapaMarkerActual = L.marker([ultima.lat, ultima.lng], { icon })
+                .addTo(_mapaLeaflet)
+                .bindPopup(`
+                    <b>${data.vehiculo}</b><br>
+                    Estado: ${ultima.estado}<br>
+                    ${formatFechaHora(ultima.timestamp)}
+                `);
+
+            // ── Vista inicial: solo en la primera carga ──────────────
+            if (_mapaPrimeraCarga) {
+                _mapaLeaflet.setView([ultima.lat, ultima.lng], 16);
+                _mapaPrimeraCarga = false;
+            }
+
+            setTimeout(() => _mapaLeaflet.invalidateSize(), 100);
+        })
+        .catch(() => {
+            document.getElementById("mapaCargando").style.display = "none";
+            document.getElementById("mapaVacio").style.display    = "block";
+            document.getElementById("mapaSubtitulo").textContent  = "Error al cargar mapa";
+        });
+}
+
+function cerrarModalMapa() {
+    document.getElementById("modalMapa").classList.remove("active");
+    if (_mapaIntervalId) { clearInterval(_mapaIntervalId); _mapaIntervalId = null; }
+    _mapaVehiculoId = null;
 }
 
 // ═══════════════════════════════════════════
@@ -569,8 +471,8 @@ function actualizarEstado() {
 
 function renderDatos(data) {
     const contenedor = document.getElementById("contenedor");
-    const tipo = localStorage.getItem("tipo") || "usuario";
-    const keys = Object.keys(data).filter(k => data[k] && data[k].vehiculo);
+    const tipo       = localStorage.getItem("tipo") || "usuario";
+    const keys       = Object.keys(data).filter(k => data[k] && data[k].vehiculo);
 
     document.getElementById("pillCount").textContent = keys.length + " UNIDADES";
     document.getElementById("sectionSub").textContent =
@@ -595,16 +497,13 @@ function renderDatos(data) {
     const tarjetasActuales = Array.from(contenedor.querySelectorAll('.vehicle-card'))
         .map(c => c.id.replace('card-', ''));
     const keysNuevos = keys.map(k => data[k].vehiculo_id?.toString() || k);
-
     const mismoConjunto =
         tarjetasActuales.length === keysNuevos.length &&
         keysNuevos.every(k => tarjetasActuales.includes(k));
 
     if (!mismoConjunto || contenedor.querySelector('.skeleton') || contenedor.querySelector('.empty-state')) {
         contenedor.innerHTML = "";
-        keys.forEach((key, i) => {
-            contenedor.innerHTML += crearTarjetaHTML(key, data[key], i, tipo);
-        });
+        keys.forEach((key, i) => { contenedor.innerHTML += crearTarjetaHTML(key, data[key], i, tipo); });
         return;
     }
 
@@ -613,11 +512,12 @@ function renderDatos(data) {
 
 // ─── CREAR HTML DE TARJETA ────────────────────
 function crearTarjetaHTML(key, v, index, tipo) {
-    const esAlerta = v.alerta === 1;
+    const esAlerta   = v.alerta === 1;
     const esSinSenal = v.estado === 'sin señal';
-    let claseCard = "vehicle-card normal";
-    if (esAlerta) claseCard = "vehicle-card alerta";
+    let claseCard    = "vehicle-card normal";
+    if (esAlerta)   claseCard = "vehicle-card alerta";
     else if (esSinSenal) claseCard = "vehicle-card sin-senal";
+
     const ts = v.timestamp
         ? new Date(v.timestamp * 1000).toLocaleTimeString("es-MX", { hour12: false })
         : "--:--";
@@ -635,6 +535,11 @@ function crearTarjetaHTML(key, v, index, tipo) {
         ? `<div class="chofer-chip"><div class="chip-dot"></div>${v.chofer_nombre}</div>`
         : `<div class="chofer-chip" style="color:var(--text-dim);">Sin chofer asignado</div>`;
 
+    // Indicador GPS en la tarjeta
+    const gpsIndicador = v.lat && v.lng
+        ? `<div class="gps-chip"><div class="gps-dot"></div>${v.lat.toFixed(4)}, ${v.lng.toFixed(4)}</div>`
+        : `<div class="gps-chip" style="color:var(--text-dim);">Sin GPS</div>`;
+
     const btnAcciones = tipo === "dueno" ? `
         <button class="btn-historial" onclick="abrirModalHistorial(${v.vehiculo_id}, '${v.vehiculo}')">
             <svg width="11" height="11" viewBox="0 0 14 14" fill="none">
@@ -642,6 +547,13 @@ function crearTarjetaHTML(key, v, index, tipo) {
                 <path d="M7 4v3.5l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
             </svg>
             Historial
+        </button>
+        <button class="btn-mapa" onclick="abrirModalMapa(${v.vehiculo_id}, '${v.vehiculo}')">
+            <svg width="11" height="11" viewBox="0 0 14 14" fill="none">
+                <circle cx="7" cy="5.5" r="3" stroke="currentColor" stroke-width="1.3"/>
+                <path d="M7 14s5-4.5 5-8.5a5 5 0 00-10 0C2 9.5 7 14 7 14z" stroke="currentColor" stroke-width="1.3"/>
+            </svg>
+            Ver mapa
         </button>
         <button class="btn-asignar" onclick="abrirModalChofer(${v.vehiculo_id}, '${v.vehiculo}')">
             <svg width="11" height="11" viewBox="0 0 14 14" fill="none">
@@ -661,17 +573,24 @@ function crearTarjetaHTML(key, v, index, tipo) {
                 <path d="M7 4v3.5l2 2" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
             </svg>
             Historial
+        </button>
+        <button class="btn-mapa" onclick="abrirModalMapa(${v.vehiculo_id}, '${v.vehiculo}')">
+            <svg width="11" height="11" viewBox="0 0 14 14" fill="none">
+                <circle cx="7" cy="5.5" r="3" stroke="currentColor" stroke-width="1.3"/>
+                <path d="M7 14s5-4.5 5-8.5a5 5 0 00-10 0C2 9.5 7 14 7 14z" stroke="currentColor" stroke-width="1.3"/>
+            </svg>
+            Ver mapa
         </button>`;
 
     return `
-        <div class="${claseCard}" data-vehiculo="${key}" id="card-${v.vehiculo_id}" style="animation-delay:${index * 0.06}s">
+        <div class="${claseCard}" data-vehiculo="${key}" id="card-${v.vehiculo_id}" style="animation-delay:${index*0.06}s">
             ${alertaBar}
             <div class="card-header">
                 <div>
                     <div class="card-name">${v.vehiculo}</div>
                     <div class="card-plate">ESP32 · UART 115200</div>
                 </div>
-                <div class="status-badge ${esAlerta ? 'warn' : esSinSenal ? 'mid' : 'ok'}">
+                <div class="status-badge ${esAlerta?'warn':esSinSenal?'mid':'ok'}">
                     <div class="badge-dot"></div>
                     ${v.estado}
                 </div>
@@ -679,20 +598,23 @@ function crearTarjetaHTML(key, v, index, tipo) {
             <div class="card-metrics">
                 <div class="metric">
                     <div class="metric-label">ESTADO</div>
-                    <div class="metric-value estado-val ${esAlerta ? 'warn' : v.estado === 'sin señal' ? 'mid' : 'ok'}">${v.estado}</div>
+                    <div class="metric-value estado-val ${esAlerta?'warn':esSinSenal?'mid':'ok'}">${v.estado}</div>
                 </div>
                 <div class="metric">
                     <div class="metric-label">PUERTA</div>
-                    <div class="metric-value puerta-val ${v.puerta === 'abierta' ? 'warn' : v.puerta === 'desconocida' ? 'mid' : 'ok'}">${v.puerta}</div>
+                    <div class="metric-value puerta-val ${v.puerta==='abierta'?'warn':v.puerta==='desconocida'?'mid':'ok'}">${v.puerta}</div>
                 </div>
                 <div class="metric">
                     <div class="metric-label">VIBRACIÓN</div>
-                    <div class="metric-value vibracion-val ${v.vibracion === 1 ? 'warn' : v.estado === 'sin señal' ? 'mid' : 'ok'}">${v.vibracion === 1 ? 'Detectada' : v.estado === 'sin señal' ? 'desconocida' : 'Normal'}</div>
+                    <div class="metric-value vibracion-val ${v.vibracion===1?'warn':esSinSenal?'mid':'ok'}">${v.vibracion===1?'Detectada':esSinSenal?'desconocida':'Normal'}</div>
                 </div>
             </div>
             <div class="card-footer">
-                <div style="display:flex;align-items:center;gap:12px;">${choferInfo}</div>
-                <div style="display:flex;align-items:center;gap:8px;">
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                    ${choferInfo}
+                    ${gpsIndicador}
+                </div>
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
                     ${btnAcciones}
                     <div class="card-footer-ts">Actualizado: <span class="timestamp">${ts}</span></div>
                 </div>
@@ -705,16 +627,13 @@ function actualizarTarjeta(key, v) {
     const card = document.getElementById(`card-${v.vehiculo_id}`);
     if (!card) return;
 
-    const esAlerta = v.alerta === 1;
+    const esAlerta   = v.alerta === 1;
+    const esSinSenal = v.estado === 'sin señal';
     const ts = v.timestamp
         ? new Date(v.timestamp * 1000).toLocaleTimeString("es-MX", { hour12: false })
         : "--:--";
 
-    const esSinSenal = v.estado === 'sin señal';
-
-    card.className = `vehicle-card ${
-        esAlerta ? 'alerta' : esSinSenal ? 'sin-senal' : 'normal'
-    }`;
+    card.className = `vehicle-card ${esAlerta?'alerta':esSinSenal?'sin-senal':'normal'}`;
 
     let alertBar = card.querySelector('.alert-bar');
     if (esAlerta && !alertBar) {
@@ -726,29 +645,18 @@ function actualizarTarjeta(key, v) {
                 </svg>
                 Alerta activa — revisar unidad
             </div>`);
-    } else if (!esAlerta && alertBar) {
-        alertBar.remove();
-    }
+    } else if (!esAlerta && alertBar) { alertBar.remove(); }
 
     const badge = card.querySelector('.status-badge');
-    badge.className = `status-badge ${
-        esAlerta ? 'warn' : v.estado === 'sin señal' ? 'mid' : 'ok'
-    }`;
-
+    badge.className = `status-badge ${esAlerta?'warn':esSinSenal?'mid':'ok'}`;
     badge.innerHTML = `<div class="badge-dot"></div>${v.estado}`;
 
-    const estadoEl    = card.querySelector('.estado-val');
-    const puertaEl    = card.querySelector('.puerta-val');
-    const vibracionEl = card.querySelector('.vibracion-val');
-
-    estadoEl.className   = `metric-value estado-val ${esAlerta ? 'warn' : v.estado === 'sin señal' ? 'mid' : 'ok'}`;
-    estadoEl.textContent = v.estado;
-
-    puertaEl.className   = `metric-value puerta-val ${v.puerta === 'abierta' ? 'warn' : v.puerta === 'desconocida' ? 'mid' : 'ok'}`;
-    puertaEl.textContent = v.puerta;
-
-    vibracionEl.className   = `metric-value vibracion-val ${v.vibracion === 1 ? 'warn' : v.estado === 'sin señal' ? 'mid' : 'ok'}`;
-    vibracionEl.textContent = v.vibracion === 1 ? 'Detectada' : v.estado === 'sin señal' ? 'desconocida' : 'Normal';
+    card.querySelector('.estado-val').className   = `metric-value estado-val ${esAlerta?'warn':esSinSenal?'mid':'ok'}`;
+    card.querySelector('.estado-val').textContent = v.estado;
+    card.querySelector('.puerta-val').className   = `metric-value puerta-val ${v.puerta==='abierta'?'warn':v.puerta==='desconocida'?'mid':'ok'}`;
+    card.querySelector('.puerta-val').textContent = v.puerta;
+    card.querySelector('.vibracion-val').className   = `metric-value vibracion-val ${v.vibracion===1?'warn':esSinSenal?'mid':'ok'}`;
+    card.querySelector('.vibracion-val').textContent = v.vibracion===1?'Detectada':esSinSenal?'desconocida':'Normal';
 
     const tsEl = card.querySelector('.timestamp');
     if (tsEl) tsEl.textContent = ts;
@@ -757,10 +665,22 @@ function actualizarTarjeta(key, v) {
     if (choferChip) {
         if (v.chofer_nombre) {
             choferChip.style.color = "";
-            choferChip.innerHTML = `<div class="chip-dot"></div>${v.chofer_nombre}`;
+            choferChip.innerHTML   = `<div class="chip-dot"></div>${v.chofer_nombre}`;
         } else {
             choferChip.style.color = "var(--text-dim)";
-            choferChip.innerHTML = "Sin chofer asignado";
+            choferChip.innerHTML   = "Sin chofer asignado";
+        }
+    }
+
+    // Actualizar indicador GPS
+    const gpsChip = card.querySelector('.gps-chip');
+    if (gpsChip) {
+        if (v.lat && v.lng) {
+            gpsChip.style.color = "";
+            gpsChip.innerHTML   = `<div class="gps-dot"></div>${v.lat.toFixed(4)}, ${v.lng.toFixed(4)}`;
+        } else {
+            gpsChip.style.color = "var(--text-dim)";
+            gpsChip.innerHTML   = "Sin GPS";
         }
     }
 }

@@ -4,7 +4,7 @@
 /* ================= CONFIGURACIÓN ================= */
 const char* ssid     = "erick_2.4G";
 const char* password = "secom100";
-const char* server   = "http://192.168.0.100:5000/datos";
+const char* server   = "http://192.168.0.104:5000/datos";
 
 /* ================= UART FPGA ================= */
 HardwareSerial SerialFPGA(2);
@@ -16,6 +16,14 @@ String puerta    = "cerrada";
 int    alerta    = 0;
 int    vibracion = 0;
 
+/* ================= GPS SIMULADO ================= */
+float lat = 16.7569;
+float lng = -93.1292;
+
+/* Movimiento simulado */
+unsigned long lastGPSUpdate = 0;
+
+/* ================= CONTROL DE CAMBIOS ================= */
 String estadoAnterior    = "";
 String puertaAnterior    = "";
 int    alertaAnterior    = -1;
@@ -46,11 +54,10 @@ void setup() {
 /* ================= LOOP ================= */
 void loop() {
 
-  /* ======= MANEJO CORRECTO DE WIFI ======= */
+  /* ======= WIFI ======= */
   if (WiFi.status() != WL_CONNECTED) {
     unsigned long ahora = millis();
 
-    // Solo intenta reconectar cada 5 segundos
     if (ahora - ultimoIntentoWiFi > 5000) {
       Serial.println("Intentando reconectar WiFi...");
       WiFi.disconnect();
@@ -58,13 +65,16 @@ void loop() {
       ultimoIntentoWiFi = ahora;
     }
 
-    return; // no seguimos si no hay WiFi
+    return;
   }
 
-  // 1. Leer FPGA
+  /* ================= GPS SIMULADO ================= */
+  simularGPS();
+
+  /* ================= FPGA ================= */
   bool huboDato = leerUART_FPGA();
 
-  // 2. Detectar cambios
+  /* ================= CAMBIOS ================= */
   bool cambioReal = (estado    != estadoAnterior)
                  || (puerta    != puertaAnterior)
                  || (alerta    != alertaAnterior)
@@ -73,7 +83,7 @@ void loop() {
   unsigned long ahora = millis();
   bool tiempoExcedido = (ahora - ultimoEnvio) >= INTERVALO_MAXIMO;
 
-  // 3. Enviar si corresponde
+  /* ================= ENVÍO ================= */
   if (cambioReal || tiempoExcedido) {
     enviarDatos();
     ultimoEnvio = ahora;
@@ -85,6 +95,25 @@ void loop() {
   }
 
   delay(10);
+}
+
+/* ================= SIMULAR GPS ================= */
+void simularGPS() {
+  unsigned long ahora = millis();
+
+  // Actualiza cada 1 segundo
+  if (ahora - lastGPSUpdate > 1000) {
+    lastGPSUpdate = ahora;
+
+    // Movimiento leve (simula trayecto)
+    lat += 0.00005;
+    lng += 0.00005;
+
+    Serial.print("GPS -> Lat: ");
+    Serial.print(lat, 6);
+    Serial.print(" | Lng: ");
+    Serial.println(lng, 6);
+  }
 }
 
 /* ================= LEER FPGA ================= */
@@ -135,17 +164,20 @@ void enviarDatos() {
 
   http.begin(server);
   http.addHeader("Content-Type", "application/json");
-  http.setTimeout(800); // NO lo cambié como pediste
+  http.setTimeout(800);
 
   String json = "{";
   json += "\"vehiculo\":\""  + vehiculo        + "\",";
   json += "\"estado\":\""    + estado          + "\",";
   json += "\"alerta\":"      + String(alerta)  + ",";
   json += "\"puerta\":\""    + puerta          + "\",";
-  json += "\"vibracion\":"   + String(vibracion);
+  json += "\"vibracion\":"   + String(vibracion) + ",";
+  json += "\"lat\":"         + String(lat, 6)  + ",";
+  json += "\"lng\":"         + String(lng, 6);
   json += "}";
 
   Serial.println(">>> Enviando a Flask...");
+  Serial.println(json);
 
   int code = http.POST(json);
 

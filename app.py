@@ -57,10 +57,9 @@ def obtener_historial(vehiculo_id):
     if 'id' not in session:
         return jsonify({"error": "no autenticado"}), 401
 
-    usuario_id = session['id']
+    usuario_id   = session['id']
     tipo_usuario = session.get('tipo')
 
-    # Verificar acceso al vehículo según rol
     if tipo_usuario == 'dueno':
         vehiculo = Vehiculo.query.filter_by(id=vehiculo_id, usuario_id=usuario_id).first()
     elif tipo_usuario == 'chofer':
@@ -71,16 +70,12 @@ def obtener_historial(vehiculo_id):
     if not vehiculo:
         return jsonify({"error": "vehículo no encontrado"}), 404
 
-    # Registros ordenados de más antiguo a más reciente para comprimir correctamente
     registros = Historial.query.filter_by(id_vehiculo=vehiculo_id)\
         .order_by(Historial.timestamp.asc()).all()
 
     if not registros:
         return jsonify({"rangos": [], "vehiculo": vehiculo.nombre}), 200
 
-    # ── COMPRESIÓN POR CAMBIO DE ESTADO ──────────────────────────
-    # Registros consecutivos idénticos se colapsan en un rango inicio-fin.
-    # Ejemplo: 3600 registros de "normal" → 1 rango "06:00 – 07:00 · Normal"
     rangos = []
     actual = {
         "estado":    registros[0].estado,
@@ -112,9 +107,63 @@ def obtener_historial(vehiculo_id):
             }
 
     rangos.append(actual)
-    rangos.reverse()  # Más recientes primero
-
+    rangos.reverse()
     return jsonify({"vehiculo": vehiculo.nombre, "rangos": rangos}), 200
+
+# ================= API MAPA / RUTA GPS =================
+@app.route('/api/mapa/<int:vehiculo_id>', methods=['GET'])
+def obtener_mapa(vehiculo_id):
+    """Devuelve puntos GPS para dibujar la ruta del vehículo."""
+    if 'id' not in session:
+        return jsonify({"error": "no autenticado"}), 401
+
+    usuario_id   = session['id']
+    tipo_usuario = session.get('tipo')
+
+    if tipo_usuario == 'dueno':
+        vehiculo = Vehiculo.query.filter_by(id=vehiculo_id, usuario_id=usuario_id).first()
+    elif tipo_usuario == 'chofer':
+        vehiculo = Vehiculo.query.filter_by(id=vehiculo_id, chofer_id=usuario_id).first()
+    else:
+        return jsonify({"error": "acceso denegado"}), 403
+
+    if not vehiculo:
+        return jsonify({"error": "vehículo no encontrado"}), 404
+
+    # Solo registros con GPS válido, últimas 24h
+    tiempo_limite = int(time.time()) - (24 * 60 * 60)
+    registros = Historial.query.filter(
+        Historial.id_vehiculo == vehiculo_id,
+        Historial.lat.isnot(None),
+        Historial.lng.isnot(None),
+        Historial.timestamp >= tiempo_limite
+    ).order_by(Historial.timestamp.asc()).all()
+
+    # Reducir a máximo 200 puntos para no saturar el mapa
+    MAX_PUNTOS = 200
+    if len(registros) > MAX_PUNTOS:
+        paso      = len(registros) // MAX_PUNTOS
+        registros = registros[::paso]
+
+    puntos = [
+        {
+            "lat":       r.lat,
+            "lng":       r.lng,
+            "timestamp": r.timestamp,
+            "alerta":    r.alerta,
+            "estado":    r.estado,
+        }
+        for r in registros
+    ]
+
+    ultima = puntos[-1] if puntos else None
+
+    return jsonify({
+        "vehiculo": vehiculo.nombre,
+        "puntos":   puntos,
+        "ultima":   ultima,
+        "total":    len(puntos)
+    }), 200
 
 # ================= RUTAS HTML =================
 @app.route('/')
@@ -145,10 +194,10 @@ def api_registro():
     if not data or not all(k in data for k in ["nombre", "correo", "password", "tipo"]):
         return jsonify({"error": "campos incompletos"}), 400
 
-    nombre = data.get("nombre", "").strip()
-    correo = data.get("correo", "").strip()
+    nombre   = data.get("nombre", "").strip()
+    correo   = data.get("correo", "").strip()
     password = data.get("password", "")
-    tipo = data.get("tipo", "").strip()
+    tipo     = data.get("tipo", "").strip()
 
     if not nombre or not correo or not password or not tipo:
         return jsonify({"error": "todos los campos son requeridos"}), 400
@@ -183,7 +232,7 @@ def api_login():
     if not data or not all(k in data for k in ["correo", "password"]):
         return jsonify({"error": "correo y contraseña requeridos"}), 400
 
-    correo = data.get("correo", "").strip()
+    correo   = data.get("correo", "").strip()
     password = data.get("password", "")
 
     if not correo or not password:
@@ -196,8 +245,8 @@ def api_login():
         return jsonify({"error": "correo o contraseña incorrectos"}), 401
 
     session['usuario'] = usuario.nombre
-    session['tipo'] = usuario.tipo
-    session['id'] = usuario.id
+    session['tipo']    = usuario.tipo
+    session['id']      = usuario.id
 
     return jsonify({"ok": True, "id": usuario.id, "nombre": usuario.nombre, "tipo": usuario.tipo}), 200
 
@@ -213,7 +262,7 @@ def crear_vehiculo():
     if not data or "nombre" not in data or "identificador" not in data:
         return jsonify({"error": "nombre e identificador requeridos"}), 400
 
-    nombre = data.get("nombre", "").strip()
+    nombre        = data.get("nombre", "").strip()
     identificador = data.get("identificador", "").strip()
 
     if not nombre or not identificador:
@@ -302,25 +351,39 @@ def recibir_datos():
 
     try:
         identificador_esp32 = data["vehiculo"]
-        vehiculo_obj = Vehiculo.query.filter_by(identificador=identificador_esp32).first()
-        id_vehiculo = vehiculo_obj.id if vehiculo_obj else None
+        vehiculo_obj        = Vehiculo.query.filter_by(identificador=identificador_esp32).first()
+        id_vehiculo         = vehiculo_obj.id if vehiculo_obj else None
 
         if Historial.query.count() > 100:
-            tiempo_limite = int(time.time()) - (24 * 60 * 60)
+            tiempo_limite        = int(time.time()) - (24 * 60 * 60)
             registros_eliminados = Historial.query.filter(Historial.timestamp < tiempo_limite).delete()
             if registros_eliminados > 0:
                 db.session.commit()
             else:
                 db.session.rollback()
 
+        # ── GPS: leer coordenadas si vienen (campo opcional) ─────
+        lat = data.get("lat", None)
+        lng = data.get("lng", None)
+        if lat is not None and lng is not None:
+            try:
+                lat = float(lat)
+                lng = float(lng)
+                if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+                    lat = lng = None
+            except (ValueError, TypeError):
+                lat = lng = None
+
         registro = Historial(
-            vehiculo=data["vehiculo"],
-            id_vehiculo=id_vehiculo,
-            estado=data["estado"],
-            alerta=data["alerta"],
-            puerta=data["puerta"],
-            vibracion=data["vibracion"],
-            timestamp=int(time.time())
+            vehiculo    = data["vehiculo"],
+            id_vehiculo = id_vehiculo,
+            estado      = data["estado"],
+            alerta      = data["alerta"],
+            puerta      = data["puerta"],
+            vibracion   = data["vibracion"],
+            timestamp   = int(time.time()),
+            lat         = lat,
+            lng         = lng,
         )
         db.session.add(registro)
         db.session.commit()
@@ -337,7 +400,7 @@ def obtener_estado():
     if 'id' not in session:
         return jsonify({"error": "no autenticado"}), 401
 
-    usuario_id = session['id']
+    usuario_id   = session['id']
     tipo_usuario = session.get('tipo', 'usuario')
 
     if tipo_usuario == 'dueno':
@@ -350,12 +413,14 @@ def obtener_estado():
     if not vehiculos_usuario:
         return jsonify({}), 200
 
-    vehiculo_ids = [v.id for v in vehiculos_usuario]
-    registros = Historial.query.filter(
+    vehiculo_ids  = [v.id for v in vehiculos_usuario]
+    registros     = Historial.query.filter(
         Historial.id_vehiculo.in_(vehiculo_ids)
     ).order_by(Historial.id.desc()).limit(app.config['MAX_RECORDS_LIMIT']).all()
 
-    resultado = {}
+    resultado     = {}
+    TIEMPO_LIMITE = 3
+    tiempo_actual = int(time.time())
 
     for v in vehiculos_usuario:
         resultado[v.nombre] = {
@@ -366,39 +431,36 @@ def obtener_estado():
             "alerta":        0,
             "puerta":        "desconocida",
             "vibracion":     0,
-            "timestamp":     None
+            "timestamp":     None,
+            "lat":           None,
+            "lng":           None,
         }
 
-        TIEMPO_LIMITE = 3  # segundos
-
-        tiempo_actual = int(time.time())
-
-        for r in registros:
-            vehiculo_obj = next((v for v in vehiculos_usuario if v.id == r.id_vehiculo), None)
-            if vehiculo_obj:
-                nombre_vehiculo = vehiculo_obj.nombre
-
-                if nombre_vehiculo in resultado and resultado[nombre_vehiculo]["timestamp"] is None:
-
-                    # 🔴 VALIDAR SI EL DATO ES VIEJO
-                    if tiempo_actual - r.timestamp > TIEMPO_LIMITE:
-                        # SIN SEÑAL
-                        resultado[nombre_vehiculo].update({
-                            "estado":    "sin señal",
-                            "alerta":    0,
-                            "puerta":    "desconocida",
-                            "vibracion": 0,
-                            "timestamp": r.timestamp
-                        })
-                    else:
-                        # DATOS EN TIEMPO REAL
-                        resultado[nombre_vehiculo].update({
-                            "estado":    r.estado,
-                            "alerta":    r.alerta,
-                            "puerta":    r.puerta,
-                            "vibracion": r.vibracion,
-                            "timestamp": r.timestamp
-                        })
+    for r in registros:
+        vehiculo_obj = next((v for v in vehiculos_usuario if v.id == r.id_vehiculo), None)
+        if vehiculo_obj:
+            nombre_vehiculo = vehiculo_obj.nombre
+            if nombre_vehiculo in resultado and resultado[nombre_vehiculo]["timestamp"] is None:
+                if tiempo_actual - r.timestamp > TIEMPO_LIMITE:
+                    resultado[nombre_vehiculo].update({
+                        "estado":    "sin señal",
+                        "alerta":    0,
+                        "puerta":    "desconocida",
+                        "vibracion": 0,
+                        "timestamp": r.timestamp,
+                        "lat":       r.lat,
+                        "lng":       r.lng,
+                    })
+                else:
+                    resultado[nombre_vehiculo].update({
+                        "estado":    r.estado,
+                        "alerta":    r.alerta,
+                        "puerta":    r.puerta,
+                        "vibracion": r.vibracion,
+                        "timestamp": r.timestamp,
+                        "lat":       r.lat,
+                        "lng":       r.lng,
+                    })
 
     return jsonify(resultado), 200
 

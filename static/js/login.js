@@ -6,65 +6,46 @@ function validarEmailFront(email) {
 
 function mostrarError(elementId, mensaje) {
     const el = document.getElementById(elementId);
-    if (el) {
-        el.textContent = mensaje;
-        el.style.display = mensaje ? 'block' : 'none';
+    if (!el) return;
+    el.textContent = mensaje;
+    // auth-error usa clase .visible, los span usan display directo
+    if (elementId === "authError") {
+        el.classList.toggle("visible", !!mensaje);
+    } else {
+        el.style.display = mensaje ? "block" : "none";
     }
 }
 
 function limpiarErrores() {
-    document.getElementById("errorCorreo").textContent = "";
-    document.getElementById("errorPassword").textContent = "";
-    document.getElementById("authError").textContent = "";
+    mostrarError("errorCorreo",   "");
+    mostrarError("errorPassword", "");
+    mostrarError("authError",     "");
 }
 
 // ================= LOGIN =================
 function login() {
-    console.log("🔓 Iniciando login...");
-    
-    // Limpiar errores previos
-    const errorCorreoEl = document.getElementById("errorCorreo");
-    const errorPasswordEl = document.getElementById("errorPassword");
-    const authErrorEl = document.getElementById("authError");
-    
-    if (errorCorreoEl) errorCorreoEl.textContent = "";
-    if (errorPasswordEl) errorPasswordEl.textContent = "";
-    if (authErrorEl) authErrorEl.textContent = "";
+    limpiarErrores();
     
     const correo = document.getElementById("correo").value.trim();
     const password = document.getElementById("password").value;
-
-    console.log("✓ Correo:", correo);
-    console.log("✓ Contraseña:", password ? "***" : "vacía");
 
     // Validaciones locales
     let valido = true;
 
     if (!correo) {
-        const msg = "El correo es requerido";
-        if (errorCorreoEl) errorCorreoEl.textContent = msg;
-        console.warn("⚠️ " + msg);
+        mostrarError("errorCorreo", "El correo es requerido");
         valido = false;
     } else if (!validarEmailFront(correo)) {
-        const msg = "Correo inválido";
-        if (errorCorreoEl) errorCorreoEl.textContent = msg;
-        console.warn("⚠️ " + msg);
+        mostrarError("errorCorreo", "Correo inválido");
         valido = false;
     }
 
     if (!password) {
-        const msg = "La contraseña es requerida";
-        if (errorPasswordEl) errorPasswordEl.textContent = msg;
-        console.warn("⚠️ " + msg);
+        mostrarError("errorPassword", "La contraseña es requerida");
         valido = false;
     }
 
-    if (!valido) {
-        console.log("Validación local fallida");
-        return;
-    }
-
-    console.log("✅ Validación local completada. Enviando al servidor...");
+    if (!valido) return;
 
     // Enviar al servidor
     fetch("/api/login", {
@@ -72,32 +53,22 @@ function login() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ correo, password })
     })
-    .then(res => {
-        console.log("Respuesta del servidor:", res.status);
-        return res.json();
-    })
+    .then(res => res.json())
     .then(data => {
-        console.log("Datos recibidos:", data);
-        
         if (data.ok) {
-            console.log("Login exitoso");
             // ✅ Guardar en localStorage
             localStorage.setItem("id_usuario", data.id);
             localStorage.setItem("nombre", data.nombre);
             localStorage.setItem("tipo", data.tipo);
             
-            console.log("Redirigiendo a /panel...");
             window.location.href = "/panel";
         } else {
-            const error = data.error || "Error al iniciar sesión";
-            console.error("Error del servidor:", error);
-            if (authErrorEl) authErrorEl.textContent = error;
+            mostrarError("authError", data.error || "Error al iniciar sesión");
         }
     })
     .catch(err => {
-        console.error("Error de conexión:", err);
-        const msg = "Error de conexión con el servidor";
-        if (authErrorEl) authErrorEl.textContent = msg;
+        mostrarError("authError", "Error de conexión con el servidor");
+        console.error(err);
     });
 }
 
